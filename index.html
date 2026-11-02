@@ -198,14 +198,21 @@ body:not(.role-vr) #vrset, body:not(.role-vr) #vrtip{display:none}
         <button type="button" id="armR" aria-pressed="true">오른팔</button>
         <button type="button" id="armL" aria-pressed="false">왼팔</button>
       </div>
+      <div class="seg" role="group" aria-label="인식 모델">
+        <button type="button" id="mdlLite" aria-pressed="false">빠른 인식</button>
+        <button type="button" id="mdlFull" aria-pressed="true">정확한 인식</button>
+      </div>
       <button class="btn primary" id="camStart" type="button">카메라 켜기</button>
       <canvas id="camView" aria-label="카메라 화면과 관절 인식 표시"></canvas>
       <p class="note" id="camInfo">상체와 오른팔 전체가 화면에 들어오게 앉으세요. 팔을 몸 옆에서 앞쪽으로 굽히면 각도가 정확합니다.</p>
+      <p class="label" style="margin-top:4px">내 몸에 맞추기</p>
       <div class="btns">
-        <button class="btn" id="calOpen" type="button">편 손 기준 잡기</button>
-        <button class="btn" id="calFist" type="button">주먹 기준 잡기</button>
+        <button class="btn" id="calExt" type="button">팔 쭉 편 기준</button>
+        <button class="btn" id="calFlex" type="button">팔 끝까지 굽힌 기준</button>
+        <button class="btn" id="calOpen" type="button">편 손 기준</button>
+        <button class="btn" id="calFist" type="button">주먹 기준</button>
       </div>
-      <p class="note" id="calInfo">손을 활짝 편 채로, 또 주먹을 쥔 채로 각각 눌러 두면 손 쥐기 인식이 정확해집니다.</p>
+      <p class="note" id="calInfo">각 자세를 취한 채로 버튼을 누르면 그 자세가 0°·145°, 0%·100%에 맞춰집니다. 사람마다 다르게 나오는 값을 바로잡아 정확도가 올라갑니다.</p>
     </section>
 
     <section class="blk">
@@ -216,6 +223,8 @@ body:not(.role-vr) #vrset, body:not(.role-vr) #vrtip{display:none}
 
     <section class="blk">
       <p class="label">보기 (휴대폰 화면도 같이 바뀜)</p>
+      <button class="btn" id="pvBtn" type="button" aria-pressed="false">휴대폰 VR 화면 미리보기</button>
+      <p class="note" id="pvInfo">크롬북 화면을 휴대폰 VR과 같은 양안 분할·렌즈 왜곡 화면으로 바꿉니다. 휴대폰이 연결되어 있으면 휴대폰을 쓴 사람이 보는 방향과 렌즈 설정을 그대로 따라갑니다.</p>
       <div class="seg" role="group" aria-label="보기 모드">
         <button type="button" class="modeBtn" data-mode="skin" aria-pressed="true">피부</button>
         <button type="button" class="modeBtn" data-mode="muscle" aria-pressed="false">근육·뼈</button>
@@ -282,7 +291,7 @@ const FING = [
 const A = { th: 20 * DEG, w: 0, thT: 20 * DEG, g: 0, gv: 0, gT: 0, aF: 0, at: 0, ff: 0.05, fe: 0.05 };
 function physStep(h){
   const m = 1.5, rc = 0.13, Ie = m * rc * rc + 0.012, gTq = m * 9.81 * rc;
-  const Kp = 14, Kd = 2 * 0.9 * Math.sqrt(Kp * Ie);
+  const Kp = 24, Kd = 2 * 0.9 * Math.sqrt(Kp * Ie);
   const cmd = Kp * (A.thT - A.th) - Kd * A.w + gTq * Math.sin(A.th);
   const capF = 32 * (0.75 + 0.25 * Math.sin(A.th)), capT = 22, co = 0.3;
   const aFc = clamp((Math.max(0, cmd) + co) / capF), atc = clamp((Math.max(0, -cmd) + co) / capT);
@@ -324,16 +333,20 @@ const grid = new THREE.GridHelper(20, 40, 0x39434b, 0x2a3238); grid.position.y =
 
 /* 피부 결 텍스처 (모공·잔주름) */
 function skinNormalTex(){
-  const N = 256; let h = new Float32Array(N * N);
+  const N = 512; let h = new Float32Array(N * N);
   for (let i = 0; i < N * N; i++) h[i] = Math.random();
   const blur = src => { const o = new Float32Array(N * N);
     for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){ let s = 0;
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) s += src[((y + dy + N) % N) * N + ((x + dx + N) % N)];
       o[y * N + x] = s / 9; } return o; };
   h = blur(blur(h));
-  for (let k = 0; k < 1100; k++){ const x = Math.random() * N | 0, y = Math.random() * N | 0; h[y * N + x] -= 0.4; }
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++)
-    h[y * N + x] += 0.05 * Math.sin(y / N * Math.PI * 2 * 22 + Math.sin(x / N * Math.PI * 2 * 3) * 1.6);
+  for (let k = 0; k < 5200; k++){ const x = Math.random() * N | 0, y = Math.random() * N | 0, d = 0.25 + Math.random() * 0.3;
+    h[y * N + x] -= d; h[y * N + (x + 1) % N] -= d * 0.4; h[((y + 1) % N) * N + x] -= d * 0.4; }
+  // 피부 잔주름: 서로 엇갈리는 두 방향의 가는 결
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){
+    const u = x / N * Math.PI * 2, v = y / N * Math.PI * 2;
+    h[y * N + x] += 0.035 * Math.sin(v * 40 + Math.sin(u * 3) * 2.2) + 0.025 * Math.sin((u + v) * 26 + Math.sin(v * 2) * 1.5) + 0.02 * Math.sin((u - v) * 31);
+  }
   const c = document.createElement('canvas'); c.width = c.height = N;
   const ctx = c.getContext('2d'), img = ctx.createImageData(N, N);
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){
@@ -342,7 +355,20 @@ function skinNormalTex(){
     img.data[i] = (nx / l * 0.5 + 0.5) * 255; img.data[i + 1] = (ny / l * 0.5 + 0.5) * 255; img.data[i + 2] = (1 / l * 0.5 + 0.5) * 255; img.data[i + 3] = 255;
   }
   ctx.putImageData(img, 0, 0);
-  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(5, 18); return t;
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(4, 14); return t;
+}
+/* 부위마다 번들거림이 다른 피부 (거칠기 맵) */
+function skinRoughTex(){
+  const N = 128, c = document.createElement('canvas'); c.width = c.height = N;
+  const ctx = c.getContext('2d'), img = ctx.createImageData(N, N);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){
+    const u = x / N * Math.PI * 2, v = y / N * Math.PI * 2;
+    const n = 0.5 + 0.18 * Math.sin(u * 2 + Math.sin(v * 3)) * Math.cos(v * 2) + 0.12 * (Math.random() - 0.5);
+    const g = clamp(150 + n * 90, 0, 255), i = (y * N + x) * 4;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = g; img.data[i + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(4, 14); return t;
 }
 /* 근섬유 결 텍스처 */
 function fiberTex(){
@@ -352,8 +378,16 @@ function fiberTex(){
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(4, 1); return t;
 }
 
-const skinMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.55, metalness: 0,
-  clearcoat: 0.15, clearcoatRoughness: 0.55, normalMap: skinNormalTex(), normalScale: new THREE.Vector2(0.35, 0.35), emissive: 0x1c0804 });
+const skinMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.62, roughnessMap: skinRoughTex(), metalness: 0,
+  clearcoat: 0.22, clearcoatRoughness: 0.42, normalMap: skinNormalTex(), normalScale: new THREE.Vector2(0.45, 0.45), emissive: 0x160603 });
+// 피하 산란 근사: 빛이 피부 속을 지나 가장자리가 붉게 비치는 효과
+skinMat.onBeforeCompile = sh => {
+  sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+    { float ndv = clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0);
+      float rim = pow(1.0 - ndv, 2.2);
+      totalEmissiveRadiance += vec3(0.75, 0.22, 0.14) * rim * 0.32 * diffuseColor.rgb;
+      totalEmissiveRadiance += vec3(0.10, 0.025, 0.015) * diffuseColor.rgb; }`);
+};
 const nailMat = new THREE.MeshPhysicalMaterial({ color: 0xebc6b8, roughness: 0.25, clearcoat: 0.8, clearcoatRoughness: 0.2 });
 const boneMat = new THREE.MeshStandardMaterial({ color: 0xeee6d2, roughness: 0.65 });
 const jointMat = new THREE.MeshStandardMaterial({ color: 0x6fd6c8, emissive: 0x1d6b62, transparent: true, opacity: 0.55, roughness: 0.3, depthWrite: false });
@@ -386,10 +420,11 @@ class Tube {
     this.geo = g; this.mesh = new THREE.Mesh(g, mat); this.mesh.frustumCulled = false; parent.add(this.mesh);
   }
   // C: 중심선 점, T: 접선, ref: 가로축 기준, rx/rz: 가로·앞뒤 반지름, bump(i,phi): 근육 불룩함 등 추가 반지름
-  update(C, T, ref, rx, rz, bump){
-    const R = this.R, S = this.S, p = this.pos, X = V(), N = V();
+  update(C, T, ref, rx, rz, bump, tw){
+    const R = this.R, S = this.S, p = this.pos, X = V(), N = V(), X2 = V();
     for (let i = 0; i < R; i++){
       const t = T[i]; X.copy(ref).addScaledVector(t, -ref.dot(t)).normalize(); N.crossVectors(t, X);
+      if (tw && tw[i]){ X2.copy(X).multiplyScalar(Math.cos(tw[i])).addScaledVector(N, Math.sin(tw[i])); X.copy(X2); N.crossVectors(t, X); }
       for (let j = 0; j <= S; j++){
         const ph = j / S * Math.PI * 2, s = Math.sin(ph), c = Math.cos(ph);
         let ox = rx[i] * s, oz = rz[i] * c;
@@ -453,7 +488,8 @@ const span = (mesh, a, b, r) => {
 const armRoot = new THREE.Group(); armRoot.position.set(0, 1.35, 0); scene.add(armRoot);
 const upperG = new THREE.Group(); armRoot.add(upperG);
 const foreG = new THREE.Group(); foreG.position.set(0, -L1, 0); armRoot.add(foreG);
-const handG = new THREE.Group(); handG.position.set(0, -L2, 0); foreG.add(handG);
+// 손목은 고정이지만 아래팔을 90° 돌린 자세: 손바닥이 몸 쪽(안쪽), 엄지가 앞을 향함
+const handG = new THREE.Group(); handG.position.set(0, -L2, 0); handG.rotation.y = Math.PI / 2; foreG.add(handG);
 const fingers = FING.map(f => {
   const g1 = new THREE.Group(); g1.position.set(f.x, -f.mcp, 0); g1.rotation.order = 'ZXY'; handG.add(g1);
   const g2 = new THREE.Group(); g2.position.set(0, -PH[0] * f.k, 0); g1.add(g2);
@@ -507,9 +543,9 @@ staticTube(upperG, [V(0, -0.014, -0.005), V(0, -0.288, 0.002)], [], 26, 14, bone
 { const hd = addMesh(upperG, sphG, boneMat, boneParts); hd.position.set(0, -0.007, -0.009); hd.scale.setScalar(0.02); }
 { const c = addMesh(upperG, cylG, boneMat, boneParts); c.position.set(0, -L1 + 0.006, 0.002); c.rotation.z = Math.PI / 2; c.scale.set(0.0085, 0.042, 0.0085); }
 // 자뼈(안쪽) · 노뼈(바깥쪽)
-staticTube(foreG, [V(0.008, 0.017, -0.012), V(0.008, -0.006, -0.003), V(0.011, -L2 + 0.006, -0.002)], [0.008], 26, 12, boneMat,
+staticTube(foreG, [V(0.008, 0.017, -0.012), V(0.008, -0.006, -0.003), V(-0.002, -L2 + 0.006, -0.011)], [0.008], 26, 12, boneMat,
   v => { const r = 0.0045 + 0.006 * gauss(v, 0, 0.13) + 0.0015 * gauss(v, 1, 0.05); return [r, r]; }, boneParts);
-staticTube(foreG, [V(-0.010, -0.004, 0.003), V(-0.012, -L2 + 0.004, 0.003)], [], 24, 12, boneMat,
+staticTube(foreG, [V(-0.010, -0.004, 0.003), V(0.003, -L2 + 0.004, 0.012)], [], 24, 12, boneMat,
   v => { const r = 0.005 + 0.0028 * gauss(v, 0, 0.05) + 0.0062 * gauss(v, 1, 0.12); return [r * (1 + 0.25 * v), r]; }, boneParts);
 { const c = addMesh(foreG, cylG, boneMat, boneParts); c.position.set(-0.010, -0.004, 0.003); c.scale.set(0.0085, 0.006, 0.0085); }
 // 손목뼈 8개
@@ -541,6 +577,9 @@ const SKIN = rgb(217, 161, 132), LIGHT = rgb(234, 184, 158), RED = rgb(198, 126,
 const ARM_TOP = 0.045, ARM_LEN = ARM_TOP + L1 + L2 + 0.006;
 const suOf = v => v * ARM_LEN - ARM_TOP;
 const noise3 = (a, b) => (Math.sin(a * 91.7 + b * 13.1) * 43758.5) % 1 * 0.012;
+// 낮은 주파수 얼룩(혈색 차이)과 작은 주근깨
+const blotch = (a, b) => 0.5 * Math.sin(a * 23 + Math.sin(b * 3) * 2) * Math.sin(b * 2 + a * 7) + 0.3 * Math.sin(a * 51 + b * 5);
+const freckle = (a, b) => { const q = Math.sin(a * 913.1 + b * 211.7) * 9137.3; return (q - Math.floor(q)) > 0.985 ? 1 : 0; };
 const armSkin = new Tube(76, 30, skinMat, armRoot, (v, ph) => {
   const su = suOf(v), cf = Math.cos(ph);
   let c = SKIN;
@@ -550,11 +589,18 @@ const armSkin = new Tube(76, 30, skinMat, armRoot, (v, ph) => {
   if (su > 0.32 && su < 0.47 && Math.abs(ph - vp) < 0.05) c = mix(c, VEIN, 0.22);
   if (su > 0.20 && su < 0.29 && Math.abs(ph - (0.9 + 0.1 * Math.sin(su * 50))) < 0.04) c = mix(c, VEIN, 0.15);
   if (su < 0) c = mix(c, RED, 0.12);
+  const bl = blotch(v, ph); c = mix(c, bl > 0 ? RED : LIGHT, Math.abs(bl) * 0.12);
+  if (freckle(v, ph)) c = mix(c, rgb(170, 110, 85), 0.35);
+  // 팔꿈치 뒤 주름
+  if (Math.abs(su - L1) < 0.02 && -cf > 0.5 && Math.abs(Math.sin((su - L1) * 900)) < 0.25) c = mix(c, rgb(176, 112, 92), 0.3);
   const n = noise3(v * 7, ph); return [c[0] + n, c[1] + n * 0.8, c[2] + n * 0.7];
 });
 const fingerSkins = fingers.map(() => new Tube(34, 14, skinMat, armRoot, (v, ph) => {
   const cf = Math.cos(ph); let c = mix(rgb(222, 157, 128), PALM, 0.6 * Math.max(0, cf));
   c = mix(c, RED, 0.3 * (gauss(v, 0.22, 0.05) + gauss(v, 0.6, 0.05) + gauss(v, 0.82, 0.04)) * Math.pow(Math.max(0, -cf), 2));
+  // 손가락 마디 주름 (등쪽은 가로 주름, 바닥쪽은 접히는 선)
+  const kn = [0.22, 0.6, 0.82].some(k => Math.abs(v - k) < 0.025 && Math.abs(Math.sin((v - k) * 520)) < 0.3);
+  if (kn) c = mix(c, rgb(180, 116, 96), cf > 0 ? 0.4 : 0.25);
   return mix(c, rgb(230, 150, 135), 0.35 * sstep(0.85, 1, v));
 }));
 const thumbSkin = new Tube(32, 16, skinMat, armRoot, (v, ph) => {
@@ -590,7 +636,7 @@ const pw = (x, p) => { x = Math.max(0, x); return p === 2 ? x * x : Math.pow(x, 
 function updateSkin(){
   const R = armSkin.R, E = P(foreG), W = P(foreG, 0, -L2 - 0.006, 0);
   const path = roundedPath([V(0, ARM_TOP, 0), E, W], [0.042], R);
-  const rx = [], rz = [], bic = [], tri = [], crs = [], ole = [], flx = [], ext = [], brr = [];
+  const rx = [], rz = [], bic = [], tri = [], crs = [], ole = [], flx = [], ext = [], brr = [], tw = [];
   const s = Math.sin(A.th), a = act();
   for (let i = 0; i < R; i++){
     const su = suOf(i / (R - 1)), v = clamp((su - L1) / L2);
@@ -607,12 +653,13 @@ function updateSkin(){
     flx.push((0.0015 + 0.004 * a.ff) * gauss(su, 0.36, 0.045));
     ext.push((0.0012 + 0.003 * a.fe) * gauss(su, 0.36, 0.045));
     brr.push((0.002 + 0.003 * a.brr) * gauss(su, 0.33, 0.04));
+    tw.push(-Math.PI / 2 * sstep(L1, L1 + L2, su));   // 아래팔 단면이 손목 쪽으로 갈수록 90° 비틀림
   }
   armSkin.update(path.C, path.T, V(1, 0, 0), rx, rz, (i, ph) => {
     const cf = Math.cos(ph);
     return bic[i] * pw(Math.cos(ph - 0.15), 2) + tri[i] * pw(-Math.cos(ph + 0.1), 2) - crs[i] * pw(cf, 4)
       + ole[i] * pw(-cf, 8) + flx[i] * pw(Math.cos(ph - 0.7), 2) + ext[i] * pw(Math.cos(ph + 2.3), 2) + brr[i] * pw(Math.cos(ph + 0.9), 2);
-  });
+  }, tw);
   const handX = P(handG, 1, 0, 0).sub(P(handG));
   fingers.forEach((F, n) => {
     const t = fingerSkins[n], Rn = t.R, r0 = F.f.r;
@@ -652,14 +699,14 @@ const musDefs = [
     pts: () => { const o = V(0, -0.15, 0.010), i = P(foreG, 0.002, -0.022, 0.004), s = Math.sin(A.th);
       return [o, o.clone().add(i).multiplyScalar(0.5).add(V(0, 0, 0.016 * (1 - 0.3 * s))), i]; } },
   { name: '위팔노근', r0: 0.009, key: 'brr',
-    pts: () => [V(-0.018, -0.21, 0.004), P(foreG, -0.02, -0.01, 0.019), P(foreG, -0.013, -0.165, 0.004)] },
+    pts: () => [V(-0.018, -0.21, 0.004), P(foreG, -0.02, -0.01, 0.019), P(handG, -0.012, 0.008, 0.004)] },
   { name: '삼두근', r0: 0.017, key: 'tri', ext: true,
     pts: () => { const o = V(0, -0.02, -0.022), i = P(foreG, 0.002, 0.012, -0.014);
       return [o, o.clone().add(i).multiplyScalar(0.5).add(V(0, 0, -0.022)), i]; } },
   { name: '손가락 굽힘근', r0: 0.011, key: 'ff',
-    pts: () => [P(foreG, 0.02, 0.0, 0.004), P(foreG, 0.014, -0.07, 0.016), P(foreG, 0.0, -0.165, 0.010)] },
+    pts: () => [P(foreG, 0.02, 0.0, 0.004), P(foreG, 0.021, -0.07, 0.0014), P(handG, 0.0, 0.015, 0.010)] },
   { name: '손가락 폄근', r0: 0.0095, key: 'fe', ext: true,
-    pts: () => [P(foreG, -0.02, 0.0, -0.004), P(foreG, -0.014, -0.07, -0.015), P(foreG, -0.002, -0.165, -0.010)] }
+    pts: () => [P(foreG, -0.02, 0.0, -0.004), P(foreG, -0.0205, -0.07, -0.0007), P(handG, 0.0, 0.015, -0.010)] }
 ];
 const musParts = [];
 musDefs.forEach(d => { d.mat = mkMus(); d.tube = new Tube(26, 14, d.mat, armRoot); d.L0 = 0; musParts.push(d.tube.mesh); });
@@ -682,7 +729,7 @@ function updateMuscles(){
   });
   tendons.forEach(({ F, sgn, t }) => {
     const z = sgn;
-    const pts = [P(foreG, F.f.x * 0.3, -0.15, 0.010 * z), P(handG, F.f.x * 0.7, -0.02, 0.0065 * z), P(F.g1, 0, 0, 0.0045 * z), P(F.g2, 0, 0, 0.0036 * z), P(F.g3, 0, -F.l3 * 0.4, 0.003 * z)];
+    const pts = [P(handG, F.f.x * 0.3, 0.03, 0.010 * z), P(handG, F.f.x * 0.7, -0.02, 0.0065 * z), P(F.g1, 0, 0, 0.0045 * z), P(F.g2, 0, 0, 0.0036 * z), P(F.g3, 0, -F.l3 * 0.4, 0.003 * z)];
     const pth = roundedPath(pts, [0.006, 0.004, 0.003], t.R), r = [];
     for (let k = 0; k < t.R; k++) r.push(0.0011);
     t.update(pth.C, pth.T, V(1, 0, 0), r, r);
@@ -729,7 +776,8 @@ const VW = { view: 'third', yaw: -1.04, pitch: 0.1, dist: 0.8, fyaw: Math.PI - 0
 const T3 = V(0, 1.13, 0.10), HEAD = V(0.19, 1.6, -0.02);
 const G = { on: false, dev: null, alpha0: 0 };
 const look = { y: 0, p: 0 };
-let vrActive = false;
+let vrActive = false, vrPreview = false, remoteV = null, remoteT = 0, rxConn = null;
+const remoteFresh = () => !!remoteV && performance.now() - remoteT < 1500;
 function camPos(useDefault){
   if (VW.view === 'first') return HEAD.clone();
   const yaw = useDefault ? -1.04 : VW.yaw, pitch = useDefault ? 0.1 : VW.pitch, d = useDefault ? 0.8 : VW.dist, cp = Math.cos(pitch);
@@ -756,9 +804,14 @@ window.addEventListener('deviceorientation', e => {
   if (!G.on){ G.on = true; G.alpha0 = e.alpha; }
 });
 function updateCamera(){
-  if (vrActive){
+  if (vrActive || vrPreview){
+    // 크롬북 미리보기: 휴대폰이 보내 준 시선(위치·방향)을 그대로 사용
+    if (vrPreview && !vrActive && remoteFresh()){
+      if (remoteV.view && remoteV.view !== VW.view) applyView(remoteV.view);
+      camera.position.fromArray(remoteV.p); camera.quaternion.fromArray(remoteV.q); return;
+    }
     camera.position.copy(camPos(true));
-    if (G.on && G.dev){
+    if (vrActive && G.on && G.dev){
       const d = G.dev, orient = ((screen.orientation && screen.orientation.angle) || window.orientation || 0) * DEG;
       eul.set(d.b * DEG, (d.a - G.alpha0) * DEG, -d.g * DEG, 'YXZ');
       camera.quaternion.setFromEuler(eul).multiply(q1).multiply(q0.setFromAxisAngle(zee, -orient));
@@ -802,7 +855,7 @@ new ResizeObserver(resize).observe(stage); resize();
 
 const rightV = V();
 function render(){
-  if (!vrActive){
+  if (!vrActive && !vrPreview){
     renderer.setRenderTarget(null); renderer.setScissorTest(false); renderer.setViewport(0, 0, W_, H_);
     camera.aspect = W_ / H_; camera.fov = 45; camera.updateProjectionMatrix();
     renderer.render(scene, camera); return;
@@ -810,14 +863,15 @@ function render(){
   camera.updateMatrixWorld();
   rightV.set(1, 0, 0).applyQuaternion(camera.quaternion);
   const hw = W_ / 2, u = distMat.uniforms;
-  u.k1.value = lens.k1; u.k2.value = lens.k2; u.zoom.value = lens.zoom; u.ca.value = lens.ca; u.aspect.value = hw / H_;
+  const Ls = !vrActive && remoteFresh() && remoteV.lens ? remoteV.lens : lens;
+  u.k1.value = Ls.k1; u.k2.value = Ls.k2; u.zoom.value = Ls.zoom; u.ca.value = Ls.ca; u.aspect.value = hw / H_;
   for (let i = 0; i < 2; i++){
     eye.position.copy(camera.position).addScaledVector(rightV, (i ? 1 : -1) * 0.032);   // 눈 사이 거리 64 mm
     eye.quaternion.copy(camera.quaternion);
-    eye.aspect = hw / H_; eye.fov = lens.fov; eye.updateProjectionMatrix();
+    eye.aspect = hw / H_; eye.fov = Ls.fov; eye.updateProjectionMatrix();
     renderer.setRenderTarget(rt); renderer.setScissorTest(false); renderer.render(scene, eye);
     renderer.setRenderTarget(null);
-    u.center.value.set(0.5 + (i ? -1 : 1) * lens.sep, 0.5);
+    u.center.value.set(0.5 + (i ? -1 : 1) * Ls.sep, 0.5);
     renderer.setScissorTest(true); renderer.setViewport(i * hw, 0, hw, H_); renderer.setScissor(i * hw, 0, hw, H_);
     renderer.render(quadScene, quadCam);
   }
@@ -835,7 +889,7 @@ canvas.addEventListener('pointermove', e => {
   if (!drag) return;
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag = { x: e.clientX, y: e.clientY }; moved += Math.abs(dx) + Math.abs(dy);
   if (moved > 12 && pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
-  if (vrActive){ if (!G.on){ look.y -= dx * 0.005; look.p = clamp(look.p - dy * 0.005, -1.2, 1.2); } return; }
+  if (vrActive || vrPreview){ if (!(vrActive && G.on)){ look.y -= dx * 0.005; look.p = clamp(look.p - dy * 0.005, -1.2, 1.2); } return; }
   if (VW.view === 'first'){ VW.fyaw -= dx * 0.005; VW.fpitch = clamp(VW.fpitch - dy * 0.005, -1.4, 1.2); }
   else { VW.yaw -= dx * 0.006; VW.pitch = clamp(VW.pitch + dy * 0.004, -0.4, 1.2); }
 });
@@ -844,7 +898,7 @@ const endDrag = () => {
   drag = null;
 };
 canvas.addEventListener('pointerup', endDrag); canvas.addEventListener('pointercancel', endDrag);
-canvas.addEventListener('wheel', e => { if (!vrActive && VW.view === 'third'){ e.preventDefault(); VW.dist = clamp(VW.dist + e.deltaY * 0.0008, 0.35, 2.5); } }, { passive: false });
+canvas.addEventListener('wheel', e => { if (!vrActive && !vrPreview && VW.view === 'third'){ e.preventDefault(); VW.dist = clamp(VW.dist + e.deltaY * 0.0008, 0.35, 2.5); } }, { passive: false });
 document.querySelectorAll('.modeBtn').forEach(b => b.addEventListener('click', () => { applyMode(b.dataset.mode); modeSeq++; }));
 document.querySelectorAll('.viewBtn').forEach(b => b.addEventListener('click', () => applyView(b.dataset.view)));
 
@@ -865,6 +919,7 @@ function openSenderPeer(code){
   peer.on('open', () => { store.set('bciRoom', code); updNet(); });
   peer.on('connection', c => {
     c.on('open', () => { conns.add(c); updNet(); });
+    c.on('data', d => { if (d && d.t === 'v' && Array.isArray(d.q) && Array.isArray(d.p)){ remoteV = d; remoteT = performance.now(); } });
     c.on('close', () => { conns.delete(c); updNet(); });
     c.on('error', () => { conns.delete(c); updNet(); });
   });
@@ -875,6 +930,11 @@ function openSenderPeer(code){
   peer.on('disconnected', () => { try { peer.reconnect(); } catch (e) {} });
 }
 $('newCode').onclick = () => openSenderPeer(newCode());
+$('pvBtn').onclick = () => {
+  vrPreview = !vrPreview; look.y = 0; look.p = 0;
+  $('pvBtn').setAttribute('aria-pressed', String(vrPreview));
+  $('pvBtn').textContent = vrPreview ? '일반 화면으로 돌아가기' : '휴대폰 VR 화면 미리보기';
+};
 function broadcast(){
   if (!conns.size) return;
   const msg = { th: +A.th.toFixed(4), g: +A.g.toFixed(3), aF: +A.aF.toFixed(3), at: +A.at.toFixed(3), ff: +A.ff.toFixed(3), fe: +A.fe.toFixed(3), m: viewMode, ms: modeSeq };
@@ -890,7 +950,7 @@ function join(){
   try { peer = new Peer({ debug: 0 }); }
   catch (e) { setNet('net2', 'err', '이 화면에서는 기기 간 연결을 쓸 수 없습니다. https 주소에 올린 파일로 여세요.'); return; }
   peer.on('open', () => {
-    const c = peer.connect(NET_PREFIX + code, { serialization: 'json' });
+    const c = peer.connect(NET_PREFIX + code, { serialization: 'json' }); rxConn = c;
     c.on('open', () => setNet('net2', 'ok', `크롬북 ${code}에 연결됨`));
     c.on('data', d => { if (d && typeof d.th === 'number'){ rxData = d; lastRx = performance.now(); } });
     c.on('close', () => setNet('net2', 'err', '연결이 끊겼습니다. 연결을 다시 눌러 주세요'));
@@ -926,8 +986,10 @@ function openSettings(){
 
 /* ====================== 크롬북: 카메라 추적 (MediaPipe Pose + Hand) ====================== */
 const C = { on: false, facing: 'user', arm: 'R', video: null, stream: null, pose: null, hands: null,
-  angle: null, grip: null, ok: false, lastVT: -1, pts: null, hpts: null, ratio: null,
-  open: store.get('bciOpen', 1.9), fist: store.get('bciFist', 1.05) };
+  angle: null, grip: null, ok: false, conf: 0, lastVT: -1, lastT: 0, pts: null, hpts: null,
+  angRaw: null, curl: null, pend: null, fps: 0, nF: 0, fpsT: 0, mp: null, fs: null,
+  model: store.get('bciModel', 'full'),
+  ext: store.get('bciExt', 8), flex: store.get('bciFlex', 140), open: store.get('bciOpenC', 25), fist: store.get('bciFistC', 215) };
 const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const camMsg = t => { $('camInfo').textContent = t; };
 const setSeg = (a, b, first) => { $(a).setAttribute('aria-pressed', String(first)); $(b).setAttribute('aria-pressed', String(!first)); };
@@ -936,16 +998,30 @@ $('camBack').onclick = () => { C.facing = 'environment'; setSeg('camFront', 'cam
 $('armR').onclick = () => { C.arm = 'R'; setSeg('armR', 'armL', true); };
 $('armL').onclick = () => { C.arm = 'L'; setSeg('armR', 'armL', false); };
 $('camStart').onclick = () => C.on ? stopCam() : startCam();
+const CAL = { open: ['bciOpenC', '편 손', 1], fist: ['bciFistC', '주먹', 1], ext: ['bciExt', '팔 쭉 편', 0], flex: ['bciFlex', '팔 끝까지 굽힌', 0] };
 const calib = (which) => {
-  if (!C.ratio){ $('calInfo').textContent = '손이 보이지 않습니다. 카메라에 손을 보여 주세요.'; return; }
-  C[which] = C.ratio; store.set(which === 'open' ? 'bciOpen' : 'bciFist', C.ratio);
-  $('calInfo').textContent = (which === 'open' ? '편 손' : '주먹') + ` 기준을 저장했습니다 (${C.ratio.toFixed(2)})`;
+  const [k, name, isHand] = CAL[which], v = isHand ? C.curl : C.angRaw;
+  if (v == null){ $('calInfo').textContent = isHand ? '손이 보이지 않습니다. 카메라에 손을 보여 주세요.' : '팔이 보이지 않습니다. 어깨·팔꿈치·손목이 모두 보이게 해 주세요.'; return; }
+  if (which === 'flex' && v - C.ext < 40){ $('calInfo').textContent = '팔을 더 굽힌 상태에서 눌러 주세요.'; return; }
+  if (which === 'fist' && v - C.open < 40){ $('calInfo').textContent = '주먹을 더 꽉 쥔 상태에서 눌러 주세요.'; return; }
+  C[which] = v; store.set(k, v);
+  $('calInfo').textContent = `${name} 기준을 저장했습니다 (측정값 ${v.toFixed(0)}°)`;
 };
-$('calOpen').onclick = () => calib('open');
-$('calFist').onclick = () => calib('fist');
+['open', 'fist', 'ext', 'flex'].forEach(w => { $('cal' + w[0].toUpperCase() + w.slice(1)).onclick = () => calib(w); });
+const setModelUI = () => setSeg('mdlLite', 'mdlFull', C.model === 'lite');
+function switchModel(m){
+  if (C.model === m) return;
+  C.model = m; store.set('bciModel', m); setModelUI();
+  try { if (C.pose) C.pose.close(); } catch (e) {}
+  C.pose = null; if (C.on) startCam();
+}
+$('mdlLite').onclick = () => switchModel('lite');
+$('mdlFull').onclick = () => switchModel('full');
+setModelUI();
 function stopCam(){
   if (C.stream) C.stream.getTracks().forEach(t => t.stop());
-  C.stream = null; C.on = false; C.angle = null; C.grip = null; $('camStart').textContent = '카메라 켜기';
+  C.stream = null; C.on = false; C.angle = null; C.grip = null; C.angRaw = null; C.curl = null; euA.reset(); euG.reset();
+  $('camStart').textContent = '카메라 켜기';
   camMsg('카메라가 꺼져 있습니다. 아래 슬라이더로 직접 움직일 수 있습니다.');
 }
 async function startCam(){
@@ -957,18 +1033,19 @@ async function startCam(){
   if (!C.video){ C.video = document.createElement('video'); C.video.playsInline = true; C.video.muted = true; }
   C.video.srcObject = C.stream; await C.video.play().catch(() => {});
   C.on = true; $('camStart').textContent = '카메라 끄기';
-  if (!C.pose){
-    camMsg('팔·손 인식 모델을 불러오는 중… (처음 한 번, 10초 정도)');
+  if (!C.pose || !C.hands){
+    camMsg('팔·손 인식 모델을 불러오는 중… (처음 한 번, 10~20초)');
     try {
-      const mp = await import(MP + '/vision_bundle.mjs');
-      const fs = await mp.FilesetResolver.forVisionTasks(MP + '/wasm');
-      const mk = (Cls, url, extra, d) => Cls.createFromOptions(fs, Object.assign({ baseOptions: { modelAssetPath: url, delegate: d }, runningMode: 'VIDEO' }, extra));
-      const both = async d => {
-        C.pose = await mk(mp.PoseLandmarker, 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task', { numPoses: 1 }, d);
-        C.hands = await mk(mp.HandLandmarker, 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task', { numHands: 2 }, d);
+      if (!C.mp){ C.mp = await import(MP + '/vision_bundle.mjs'); C.fs = await C.mp.FilesetResolver.forVisionTasks(MP + '/wasm'); }
+      const mp = C.mp;
+      const mk = (Cls, url, extra, d) => Cls.createFromOptions(C.fs, Object.assign({ baseOptions: { modelAssetPath: url, delegate: d }, runningMode: 'VIDEO' }, extra));
+      const poseUrl = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_' + (C.model === 'lite' ? 'lite' : 'full') + '/float16/1/pose_landmarker_' + (C.model === 'lite' ? 'lite' : 'full') + '.task';
+      const load = async d => {
+        if (!C.pose) C.pose = await mk(mp.PoseLandmarker, poseUrl, { numPoses: 1, minPoseDetectionConfidence: 0.5, minTrackingConfidence: 0.5 }, d);
+        if (!C.hands) C.hands = await mk(mp.HandLandmarker, 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task', { numHands: 2, minHandDetectionConfidence: 0.5, minTrackingConfidence: 0.5 }, d);
       };
-      try { await both('GPU'); } catch (e) { await both('CPU'); }
-    } catch (e) { C.pose = null; C.hands = null; camMsg('인식 모델을 불러오지 못했습니다. 인터넷 연결을 확인하세요.'); return; }
+      try { await load('GPU'); } catch (e) { await load('CPU'); }
+    } catch (e) { C.pose = null; camMsg('인식 모델을 불러오지 못했습니다. 인터넷 연결을 확인하세요.'); return; }
   }
   camMsg('추적 중. 상체와 팔, 손이 모두 보이게 해 주세요.');
 }
@@ -978,22 +1055,45 @@ function angleAt(a, b, c){
   return 180 - Math.acos(clamp(d / (n || 1), -1, 1)) / DEG;
 }
 const d3 = (p, q) => Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z);
+// One Euro 필터: 느린 움직임에서는 떨림을 강하게 줄이고, 빠른 움직임에서는 지연을 줄임
+class OneEuro {
+  constructor(minCut, beta){ this.minCut = minCut; this.beta = beta; this.x = null; this.dx = 0; }
+  f(x, dt){
+    if (this.x == null){ this.x = x; return x; }
+    const al = c => 1 / (1 + 1 / (2 * Math.PI * c * dt));
+    this.dx += al(1.0) * ((x - this.x) / dt - this.dx);
+    this.x += al(this.minCut + this.beta * Math.abs(this.dx)) * (x - this.x);
+    return this.x;
+  }
+  reset(){ this.x = null; this.dx = 0; }
+}
+const euA = new OneEuro(1.5, 0.015), euG = new OneEuro(1.5, 0.01);
+const FING_IDS = [[0, 5, 6, 7, 8], [0, 9, 10, 11, 12], [0, 13, 14, 15, 16], [0, 17, 18, 19, 20]];
 function camTrack(){
   if (!C.on || !C.pose || !C.hands || !C.video || C.video.readyState < 2 || C.video.currentTime === C.lastVT) return;
   C.lastVT = C.video.currentTime;
-  const now = performance.now();
+  const now = performance.now(), dt = clamp((now - (C.lastT || now - 33)) / 1000, 0.005, 0.2); C.lastT = now;
+  C.nF++; if (now - C.fpsT > 1000){ C.fps = C.nF * 1000 / (now - C.fpsT); C.nF = 0; C.fpsT = now; }
   let pr, hr;
   try { pr = C.pose.detectForVideo(C.video, now); hr = C.hands.detectForVideo(C.video, now); } catch (e) { return; }
   const ids = C.arm === 'R' ? [12, 14, 16] : [11, 13, 15];
   const L = pr.landmarks && pr.landmarks[0], Wl = pr.worldLandmarks && pr.worldLandmarks[0];
-  C.ok = false;
+  C.ok = false; C.conf = 0;
   if (L && Wl){
     C.pts = ids.map(i => L[i]);
-    C.ok = Math.min(...C.pts.map(p => p.visibility == null ? 1 : p.visibility)) > 0.5;
+    C.conf = Math.min(...C.pts.map(p => p.visibility == null ? 1 : p.visibility));
+    C.ok = C.conf > 0.5;
     if (C.ok){
-      const a = clamp(angleAt(Wl[ids[0]], Wl[ids[1]], Wl[ids[2]]), 0, 145);
-      if (C.angle == null) C.angle = a;
-      C.angle += (a - C.angle) * clamp(0.3 + Math.abs(a - C.angle) / 40, 0.3, 0.85);
+      let a = clamp(angleAt(Wl[ids[0]], Wl[ids[1]], Wl[ids[2]]), 0, 180);
+      // 한 프레임에 60° 넘게 튀면 오인식일 수 있으므로 다음 프레임에서도 비슷할 때만 받아들임
+      if (C.angRaw != null && Math.abs(a - C.angRaw) > 60){
+        if (C.pend == null || Math.abs(a - C.pend) > 25){ C.pend = a; a = null; } else C.pend = null;
+      } else C.pend = null;
+      if (a != null){
+        C.angRaw = euA.f(a, dt);
+        // 내 몸 기준(쭉 편 각도~끝까지 굽힌 각도)을 0°~140°로 맞춤
+        C.angle = clamp((C.angRaw - C.ext) / ((C.flex - C.ext) || 1) * 140, 0, 145);
+      }
     }
   } else C.pts = null;
   C.hpts = null;
@@ -1004,12 +1104,11 @@ function camTrack(){
       hr.landmarks.forEach((h, k) => { const dd = Math.hypot(h[0].x - wr.x, h[0].y - wr.y); if (dd < bd){ bd = dd; best = k; } });
     }
     const hw = hr.worldLandmarks[best]; C.hpts = hr.landmarks[best];
-    // 손가락마다 (손목–손끝 거리) ÷ (손목–손가락 뿌리 거리): 펴면 약 1.9, 쥐면 약 1.0
-    const r = [[5, 8], [9, 12], [13, 16], [17, 20]].map(([m, t]) => d3(hw[0], hw[t]) / (d3(hw[0], hw[m]) || 1)).reduce((s, x) => s + x, 0) / 4;
-    C.ratio = r;
-    const g = clamp((C.open - r) / ((C.open - C.fist) || 0.5));
-    if (C.grip == null) C.grip = g;
-    C.grip += (g - C.grip) * clamp(0.35 + Math.abs(g - C.grip), 0.35, 0.9);
+    // 네 손가락마다 세 마디(뿌리·가운데·끝)의 굽힘각을 더한 값의 평균: 펴면 약 25°, 주먹이면 약 215°
+    const curl = FING_IDS.map(f => angleAt(hw[f[0]], hw[f[1]], hw[f[2]]) + angleAt(hw[f[1]], hw[f[2]], hw[f[3]]) + angleAt(hw[f[2]], hw[f[3]], hw[f[4]]))
+      .reduce((sum, x) => sum + x, 0) / 4;
+    C.curl = euG.f(curl, dt);
+    C.grip = clamp((C.curl - C.open) / ((C.fist - C.open) || 1));
   }
 }
 const cv = $('camView'), cvx = cv.getContext('2d');
@@ -1031,6 +1130,11 @@ function drawCam(){
     HAND_LINKS.forEach(([a, b]) => { cvx.moveTo(C.hpts[a].x * w, C.hpts[a].y * h); cvx.lineTo(C.hpts[b].x * w, C.hpts[b].y * h); }); cvx.stroke();
   }
   cvx.restore();
+  if (C.angle != null || C.grip != null){
+    cvx.fillStyle = 'rgba(11,16,19,.75)'; cvx.fillRect(8, 8, 190, 28);
+    cvx.fillStyle = '#e1e8eb'; cvx.font = '500 14px "IBM Plex Mono", monospace';
+    cvx.fillText(`팔꿈치 ${C.angle == null ? '—' : Math.round(C.angle) + '°'} · 손 ${C.grip == null ? '—' : Math.round(C.grip * 100) + '%'}`, 16, 27);
+  }
 }
 
 /* ====================== 크롬북 화면 숫자 ====================== */
@@ -1044,6 +1148,9 @@ function updateUI(){
   const a = act();
   $('vAng').textContent = Math.round(A.th / DEG) + '°'; $('vGrip').textContent = Math.round(A.g * 100) + '%';
   MUS_UI.forEach(([k]) => { $('mb_' + k).style.width = clamp(a[k]) * 100 + '%'; $('mo_' + k).textContent = Math.round(clamp(a[k]) * 100) + '%'; });
+  if (C.on && C.pose && C.hands)
+    camMsg(`추적 중 · 초당 ${Math.round(C.fps)}회 분석 · 팔 인식 ${C.ok ? '양호' : '불안정'} (신뢰도 ${C.conf.toFixed(2)}) · 손 ${C.hpts ? '인식됨' : '안 보임'}`);
+  if (vrPreview) $('pvInfo').textContent = remoteFresh() ? '휴대폰을 쓴 사람의 시선과 렌즈 설정을 그대로 보여 주는 중입니다.' : '휴대폰이 연결되지 않아 기본 렌즈 값으로 보여 줍니다. 드래그로 둘러볼 수 있습니다.';
 }
 
 /* ====================== 역할 선택 ====================== */
@@ -1062,7 +1169,7 @@ $('pickVr').onclick = () => startRole('vr');
 /* ====================== 메인 루프 ====================== */
 applyMode('skin'); placeBoard();
 if (location.hash === '#send' || location.hash === '#vr') startRole(location.hash.slice(1));
-let last = performance.now(), acc = 0, hudT = 0, uiT = 0, netT = 0, tt = 0;
+let last = performance.now(), acc = 0, hudT = 0, uiT = 0, netT = 0, tt = 0, sendT = 0;
 function demoTargets(){ A.thT = (72 + 62 * Math.sin(tt * 0.7)) * DEG; A.gT = 0.5 + 0.5 * Math.sin(tt * 1.1); }
 function simulate(dt){ acc += dt; while (acc >= 0.001){ physStep(0.001); acc -= 0.001; } }
 function frame(now){
@@ -1084,7 +1191,9 @@ function frame(now){
   setPose(); updateSkin();
   if (viewMode === 'muscle') updateMuscles();
   updateCamera();
-  if (!vrActive && VW.view === 'third') board.lookAt(camera.position);
+  if (role === 'vr' && rxConn && rxConn.open){ sendT += dt; if (sendT > 0.066){ sendT = 0;
+    try { rxConn.send({ t: 'v', q: camera.quaternion.toArray(), p: camera.position.toArray(), view: VW.view, lens }); } catch (e) {} } }
+  if (!vrActive && !vrPreview && VW.view === 'third') board.lookAt(camera.position);
   hudT += dt; if (hudT > 0.1){ hudT = 0; drawHud(); }
   if (role === 'send'){ uiT += dt; if (uiT > 0.08){ uiT = 0; updateUI(); } drawCam(); }
   render();
