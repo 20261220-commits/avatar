@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>BCI 가상 오른팔</title>
+<title>BCI 가상 왼팔</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
@@ -55,7 +55,20 @@ input[type=range]{width:100%;accent-color:var(--eeg)}
 .stat .k{font-size:12px;color:var(--muted)}
 .stat .v{font-family:var(--mono);font-size:22px;font-variant-numeric:tabular-nums;line-height:1.25}
 .mus{display:grid;grid-template-columns:96px 1fr 40px;gap:6px 10px;align-items:center;font-size:12.5px}
-.mus .bar{height:6px;background:#1c272e;border-radius:3px;overflow:hidden}
+.mus .bar,.eegRows .bar{height:6px;background:#1c272e;border-radius:3px;overflow:hidden}
+.eegRows{display:grid;grid-template-columns:30px minmax(0,1fr) 64px 42px;gap:6px 10px;align-items:center;font-size:12.5px}
+.eegRows b{font-family:var(--mono);font-weight:500}
+.eegRows .spark{width:100%;height:28px;display:block;background:#0b1013;border-radius:4px}
+.eegRows .bar span{display:block;height:100%;width:0;background:var(--power)}
+.eegRows output{font-family:var(--mono);text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:transparent;border:1px solid var(--line);color:var(--muted);font:inherit;font-size:12.5px;padding:5px 11px;border-radius:999px;cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--power);color:var(--fg)}
+.chip.set::after{content:" ✓";color:var(--eeg)}
+.txt{background:#0b1013;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:7px 9px;font-family:var(--mono);font-size:13px;width:100%;box-sizing:border-box}
+select{background:#0b1013;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:5px 8px;font:inherit;font-size:13px}
+#camView.drawing{cursor:crosshair;touch-action:none}
+#eegBox .label{margin-top:8px}
 .mus .bar span{display:block;height:100%;width:0;background:var(--muscle)}
 .mus .bar.ext span{background:#c98bff}
 .mus output{font-family:var(--mono);text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -105,7 +118,7 @@ body:not(.role-vr) #vrset, body:not(.role-vr) #vrtip{display:none}
 <div id="pick">
   <div class="wrap">
     <div>
-      <h1 style="font-size:26px">BCI 가상 오른팔</h1>
+      <h1 style="font-size:26px">BCI 가상 왼팔</h1>
       <p class="sub">카메라에 찍힌 실제 팔과 손의 움직임을 물리 시뮬레이션 팔로 바꾸어, 휴대폰을 끼운 DIY VR 기기로 보는 프로그램</p>
     </div>
     <div class="flow"><b>크롬북 카메라</b>→<b>팔꿈치 각도·손 쥐기 인식</b>→<b>물리 계산(근육·관절)</b>→<b>인터넷 전송</b>→<b>휴대폰 3D 렌더</b>→<b>양안 분할·렌즈 왜곡 보정</b></div>
@@ -113,7 +126,7 @@ body:not(.role-vr) #vrset, body:not(.role-vr) #vrtip{display:none}
       <button class="role" id="pickSend" type="button">
         <span class="tag">크롬북 · 노트북</span>
         <span class="t">카메라와 시뮬레이션</span>
-        <span class="d">카메라로 팔을 찍고 물리 계산을 합니다. 화면에 나오는 4자리 코드를 휴대폰에 입력하세요.</span>
+        <span class="d">카메라로 팔이나 태블릿의 EEG 화면을 찍고 물리 계산을 합니다. 화면에 나오는 4자리 코드를 휴대폰에 입력하세요.</span>
       </button>
       <button class="role" id="pickVr" type="button">
         <span class="tag">휴대폰 · VR 기기</span>
@@ -127,7 +140,7 @@ body:not(.role-vr) #vrset, body:not(.role-vr) #vrtip{display:none}
 
 <div id="app">
   <div id="stage">
-    <canvas id="gl" aria-label="물리 시뮬레이션 오른팔 3D 장면"></canvas>
+    <canvas id="gl" aria-label="물리 시뮬레이션 왼팔 3D 장면"></canvas>
     <div id="hint">드래그: 시점 돌리기 · 휠: 확대</div>
     <div id="vrtip">탭: 정면 맞추기 · 길게 누르기: 설정</div>
 
@@ -177,7 +190,7 @@ body:not(.role-vr) #vrset, body:not(.role-vr) #vrtip{display:none}
 
   <aside id="panel">
     <div>
-      <h1>BCI 가상 오른팔 · 크롬북</h1>
+      <h1>BCI 가상 왼팔 · 크롬북</h1>
       <p class="sub">카메라로 찍은 팔을 물리 시뮬레이션으로 바꾸어 휴대폰 VR로 보냅니다</p>
     </div>
 
@@ -189,22 +202,29 @@ body:not(.role-vr) #vrset, body:not(.role-vr) #vrtip{display:none}
     </section>
 
     <section class="blk">
-      <p class="label">카메라 추적</p>
+      <p class="label">카메라 입력</p>
+      <div class="seg" role="group" aria-label="입력 방식">
+        <button type="button" id="inArm" aria-pressed="true">팔·손 따라 하기</button>
+        <button type="button" id="inEeg" aria-pressed="false">EEG 화면으로 움직이기</button>
+      </div>
       <div class="seg" role="group" aria-label="카메라 방향">
         <button type="button" id="camFront" aria-pressed="true">앞 카메라</button>
         <button type="button" id="camBack" aria-pressed="false">뒤 카메라</button>
       </div>
+      <div id="armOpts" class="blk">
       <div class="seg" role="group" aria-label="추적할 팔">
-        <button type="button" id="armR" aria-pressed="true">오른팔</button>
-        <button type="button" id="armL" aria-pressed="false">왼팔</button>
+        <button type="button" id="armL" aria-pressed="true">왼팔</button>
+        <button type="button" id="armR" aria-pressed="false">오른팔</button>
       </div>
       <div class="seg" role="group" aria-label="인식 모델">
         <button type="button" id="mdlLite" aria-pressed="false">빠른 인식</button>
         <button type="button" id="mdlFull" aria-pressed="true">정확한 인식</button>
       </div>
+      </div>
       <button class="btn primary" id="camStart" type="button">카메라 켜기</button>
       <canvas id="camView" aria-label="카메라 화면과 관절 인식 표시"></canvas>
-      <p class="note" id="camInfo">상체와 오른팔 전체가 화면에 들어오게 앉으세요. 팔을 몸 옆에서 앞쪽으로 굽히면 각도가 정확합니다.</p>
+      <p class="note" id="camInfo">상체와 왼팔 전체가 화면에 들어오게 앉으세요. 팔을 몸 옆에서 앞쪽으로 굽히면 각도가 정확합니다.</p>
+      <div id="armCal" class="blk">
       <p class="label" style="margin-top:4px">내 몸에 맞추기</p>
       <div class="btns">
         <button class="btn" id="calExt" type="button">팔 쭉 편 기준</button>
@@ -213,6 +233,35 @@ body:not(.role-vr) #vrset, body:not(.role-vr) #vrtip{display:none}
         <button class="btn" id="calFist" type="button">주먹 기준</button>
       </div>
       <p class="note" id="calInfo">각 자세를 취한 채로 버튼을 누르면 그 자세가 0°·145°, 0%·100%에 맞춰집니다. 사람마다 다르게 나오는 값을 바로잡아 정확도가 올라갑니다.</p>
+      </div>
+
+      <div id="eegBox" class="blk" hidden>
+        <p class="note">BCI 기기를 연결한 태블릿을 크롬북 카메라 앞에 정면으로 세우세요. 화면 밝기를 높이고 반사가 없을수록 잘 읽힙니다.</p>
+        <p class="label">① 파형 영역 지정 · 카메라 화면 위에서 드래그</p>
+        <div class="chips" id="roiChips" role="group" aria-label="지정할 영역"></div>
+        <div class="field">
+          <label for="eegOrder" class="note">"전체 한 번에"로 지정할 때 위에서부터 패널 순서</label>
+          <input id="eegOrder" class="txt" value="Fz, F4, Cz, C4, Pz">
+        </div>
+        <p class="note">채널 이름 글씨와 눈금 숫자는 빼고, 파형이 그려지는 부분만 감싸 주세요.</p>
+        <div class="btns"><button class="btn" id="roiClear" type="button">영역 모두 지우기</button></div>
+
+        <p class="label">② 읽는 방법</p>
+        <div class="field"><div class="row"><label for="secW">태블릿 화면 가로 = 몇 초 분량</label><output id="secWo"></output></div><input type="range" id="secW" min="1" max="10" step="0.5"></div>
+        <div class="seg" role="group" aria-label="읽을 값">
+          <button type="button" id="featMu" aria-pressed="true">μ파(8–13 Hz) 세기</button>
+          <button type="button" id="featAmp" aria-pressed="false">전체 진폭</button>
+        </div>
+        <div class="field"><div class="row"><label for="elCh">팔꿈치를 움직일 채널</label><select id="elCh"></select></div></div>
+        <div class="field"><div class="row"><label for="grCh">손을 쥐게 할 채널</label><select id="grCh"></select></div></div>
+        <label class="check"><input type="checkbox" id="eegInv"> 값이 커질 때 움직이기 (기본은 작아질 때 = μ파 감소)</label>
+
+        <p class="label">③ 휴식 기준</p>
+        <button class="btn primary" id="eegCal" type="button">휴식 기준 잡기 (5초 동안 가만히)</button>
+        <p class="note" id="eegCalInfo">아직 기준이 없습니다.</p>
+        <div class="eegRows" id="eegRows"></div>
+        <p class="note">막대는 휴식 기준보다 값이 얼마나 줄었는지(%)입니다. 팔꿈치 채널이 15%보다 많이 줄기 시작하면 팔이 굽기 시작하고, 50% 줄면 끝까지 굽습니다.</p>
+      </div>
     </section>
 
     <section class="blk">
@@ -485,7 +534,8 @@ const span = (mesh, a, b, r) => {
 
 /* ====================== 팔 골격(관절 계층) ====================== */
 // 팔 좌표: 어깨 = 원점, 위 = +y, 몸 앞 = +z, 바깥쪽(엄지 쪽) = −x, 안쪽 = +x
-const armRoot = new THREE.Group(); armRoot.position.set(0, 1.35, 0); scene.add(armRoot);
+// 왼팔: 오른팔 모델을 좌우 반전 (x축 배율 −1). 반전된 면은 three.js가 자동으로 앞뒤를 바로잡음
+const armRoot = new THREE.Group(); armRoot.position.set(0, 1.35, 0); armRoot.scale.x = -1; scene.add(armRoot);
 const upperG = new THREE.Group(); armRoot.add(upperG);
 const foreG = new THREE.Group(); foreG.position.set(0, -L1, 0); armRoot.add(foreG);
 // 손목은 고정이지만 아래팔을 90° 돌린 자세: 손바닥이 몸 쪽(안쪽), 엄지가 앞을 향함
@@ -751,9 +801,9 @@ function applyMode(m){
 }
 
 /* ====================== 3D 계측판 ====================== */
-const hud = document.createElement('canvas'); hud.width = 512; hud.height = 300;
+const hud = document.createElement('canvas'); hud.width = 512; hud.height = 340;
 const hctx = hud.getContext('2d'), hudTex = new THREE.CanvasTexture(hud);
-const board = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.2), new THREE.MeshBasicMaterial({ map: hudTex, transparent: true, depthWrite: false }));
+const board = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.226), new THREE.MeshBasicMaterial({ map: hudTex, transparent: true, depthWrite: false }));
 scene.add(board);
 const MUS_UI = [['bic', '이두근', 0], ['brach', '위팔근', 0], ['brr', '위팔노근', 0], ['tri', '삼두근', 1], ['ff', '손가락 굽힘근', 0], ['fe', '손가락 폄근', 1]];
 function drawHud(){
@@ -768,19 +818,20 @@ function drawHud(){
     c.fillStyle = '#1c272e'; c.fillRect(170, y - 6, 300, 10);
     c.fillStyle = e ? '#c98bff' : '#ff5a48'; c.fillRect(170, y - 6, 300 * clamp(a[k]), 10);
   });
+  c.fillStyle = '#f2b84b'; c.font = '500 19px "IBM Plex Sans KR", sans-serif'; c.fillText(hudSrc(), 22, 318);
   hudTex.needsUpdate = true;
 }
 
 /* ====================== 카메라 시점 ====================== */
-const VW = { view: 'third', yaw: -1.04, pitch: 0.1, dist: 0.8, fyaw: Math.PI - 0.245, fpitch: -0.75 };
-const T3 = V(0, 1.13, 0.10), HEAD = V(0.19, 1.6, -0.02);
+const VW = { view: 'third', yaw: 1.04, pitch: 0.1, dist: 0.8, fyaw: Math.PI + 0.245, fpitch: -0.75 };
+const T3 = V(0, 1.13, 0.10), HEAD = V(-0.19, 1.6, -0.02);
 const G = { on: false, dev: null, alpha0: 0 };
 const look = { y: 0, p: 0 };
 let vrActive = false, vrPreview = false, remoteV = null, remoteT = 0, rxConn = null;
 const remoteFresh = () => !!remoteV && performance.now() - remoteT < 1500;
 function camPos(useDefault){
   if (VW.view === 'first') return HEAD.clone();
-  const yaw = useDefault ? -1.04 : VW.yaw, pitch = useDefault ? 0.1 : VW.pitch, d = useDefault ? 0.8 : VW.dist, cp = Math.cos(pitch);
+  const yaw = useDefault ? 1.04 : VW.yaw, pitch = useDefault ? 0.1 : VW.pitch, d = useDefault ? 0.8 : VW.dist, cp = Math.cos(pitch);
   return V(T3.x + d * Math.sin(yaw) * cp, T3.y + d * Math.sin(pitch), T3.z + d * Math.cos(yaw) * cp);
 }
 function baseYaw(){
@@ -788,7 +839,7 @@ function baseYaw(){
   const p = camPos(true); return Math.atan2(-(T3.x - p.x), -(T3.z - p.z));
 }
 function placeBoard(){
-  if (VW.view === 'third') board.position.set(0.05, 1.42, -0.18); else board.position.set(-0.12, 1.42, 0.5);
+  if (VW.view === 'third') board.position.set(-0.05, 1.42, -0.18); else board.position.set(0.12, 1.42, 0.5);
   board.lookAt(camPos(true));
 }
 function applyView(v){
@@ -937,7 +988,7 @@ $('pvBtn').onclick = () => {
 };
 function broadcast(){
   if (!conns.size) return;
-  const msg = { th: +A.th.toFixed(4), g: +A.g.toFixed(3), aF: +A.aF.toFixed(3), at: +A.at.toFixed(3), ff: +A.ff.toFixed(3), fe: +A.fe.toFixed(3), m: viewMode, ms: modeSeq };
+  const msg = { th: +A.th.toFixed(4), g: +A.g.toFixed(3), aF: +A.aF.toFixed(3), at: +A.at.toFixed(3), ff: +A.ff.toFixed(3), fe: +A.fe.toFixed(3), m: viewMode, ms: modeSeq, hs: hudSrc() };
   conns.forEach(c => { try { if (c.open) c.send(msg); } catch (e) {} });
 }
 function join(){
@@ -985,7 +1036,7 @@ function openSettings(){
 }
 
 /* ====================== 크롬북: 카메라 추적 (MediaPipe Pose + Hand) ====================== */
-const C = { on: false, facing: 'user', arm: 'R', video: null, stream: null, pose: null, hands: null,
+const C = { on: false, facing: 'user', arm: 'L', video: null, stream: null, pose: null, hands: null,
   angle: null, grip: null, ok: false, conf: 0, lastVT: -1, lastT: 0, pts: null, hpts: null,
   angRaw: null, curl: null, pend: null, fps: 0, nF: 0, fpsT: 0, mp: null, fs: null,
   model: store.get('bciModel', 'full'),
@@ -995,8 +1046,8 @@ const camMsg = t => { $('camInfo').textContent = t; };
 const setSeg = (a, b, first) => { $(a).setAttribute('aria-pressed', String(first)); $(b).setAttribute('aria-pressed', String(!first)); };
 $('camFront').onclick = () => { C.facing = 'user'; setSeg('camFront', 'camBack', true); if (C.on) startCam(); };
 $('camBack').onclick = () => { C.facing = 'environment'; setSeg('camFront', 'camBack', false); if (C.on) startCam(); };
-$('armR').onclick = () => { C.arm = 'R'; setSeg('armR', 'armL', true); };
-$('armL').onclick = () => { C.arm = 'L'; setSeg('armR', 'armL', false); };
+$('armL').onclick = () => { C.arm = 'L'; setSeg('armL', 'armR', true); };
+$('armR').onclick = () => { C.arm = 'R'; setSeg('armL', 'armR', false); };
 $('camStart').onclick = () => C.on ? stopCam() : startCam();
 const CAL = { open: ['bciOpenC', '편 손', 1], fist: ['bciFistC', '주먹', 1], ext: ['bciExt', '팔 쭉 편', 0], flex: ['bciFlex', '팔 끝까지 굽힌', 0] };
 const calib = (which) => {
@@ -1028,11 +1079,12 @@ async function startCam(){
   if (C.stream) C.stream.getTracks().forEach(t => t.stop());
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ camMsg('이 화면에서는 카메라를 쓸 수 없습니다. https 주소에서 열어 주세요.'); return; }
   camMsg('카메라를 켜는 중…');
-  try { C.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: C.facing, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false }); }
+  try { C.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: C.facing, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }); }
   catch (e) { camMsg('카메라가 막혀 있습니다. 권한을 허용했는지 확인하세요. Claude 페이지 안에서는 카메라를 쓸 수 없으니 https 주소에 올린 파일로 여세요.'); return; }
   if (!C.video){ C.video = document.createElement('video'); C.video.playsInline = true; C.video.muted = true; }
   C.video.srcObject = C.stream; await C.video.play().catch(() => {});
   C.on = true; $('camStart').textContent = '카메라 끄기';
+  if (E.mode === 'eeg'){ camMsg('카메라가 켜졌습니다. 카메라 화면 위에서 파형 영역을 드래그해 지정하세요.'); return; }
   if (!C.pose || !C.hands){
     camMsg('팔·손 인식 모델을 불러오는 중… (처음 한 번, 10~20초)');
     try {
@@ -1118,8 +1170,10 @@ function drawCam(){
   if (cv.width !== w){ cv.width = w; cv.height = h; }
   cvx.fillStyle = '#0b1013'; cvx.fillRect(0, 0, w, h);
   const v = C.video; if (!C.on || !v || v.readyState < 2) return;
-  cvx.save(); if (C.facing === 'user'){ cvx.translate(w, 0); cvx.scale(-1, 1); }
+  const armMode = E.mode === 'arm';
+  cvx.save(); if (C.facing === 'user' && armMode){ cvx.translate(w, 0); cvx.scale(-1, 1); }
   cvx.drawImage(v, 0, 0, w, h);
+  if (!armMode){ cvx.restore(); drawEegOverlay(w, h); return; }
   if (C.pts){
     cvx.strokeStyle = C.ok ? '#5fd3c4' : '#8c9ca5'; cvx.lineWidth = 3; cvx.beginPath();
     C.pts.forEach((p, i) => i ? cvx.lineTo(p.x * w, p.y * h) : cvx.moveTo(p.x * w, p.y * h)); cvx.stroke();
@@ -1137,6 +1191,202 @@ function drawCam(){
   }
 }
 
+/* ====================== 크롬북: 태블릿 EEG 화면 인식 ====================== */
+// 카메라로 찍은 태블릿 화면에서 채널별 파형 선의 높이를 열마다 읽어 신호로 되살리고,
+// μ파(8–13 Hz) 세기(또는 진폭)가 휴식 기준보다 얼마나 줄었는지로 팔을 움직임
+const CH = ['Fz', 'F4', 'Cz', 'C4', 'Pz'];
+const E = {
+  mode: store.get('bciInMode', 'arm'), rois: store.get('bciRois', {}), order: store.get('bciOrder', CH.slice()),
+  target: 'all', secW: store.get('bciSecW', 4), feat: store.get('bciFeat', 'mu'), inv: store.get('bciInv', false),
+  elCh: store.get('bciElCh', 'C4'), grCh: store.get('bciGrCh', 'none'), base: store.get('bciBase', {}),
+  calib: 0, acc: {}, accN: 0, ch: {}, uEl: null, uGr: null, lastVT: -1, lastT: 0, drag: null, fs: 0, nF: 0, fps: 0, fpsT: 0
+};
+const pc = document.createElement('canvas'), pctx = pc.getContext('2d', { willReadFrequently: true });
+// 영역 안에서 배경과 가장 다른(어둡거나 밝거나 색이 있는) 점을 열마다 찾아 파형 선의 높이로 삼음
+function extractTrace(d, stride, rx, ry, rw, rh){
+  const n = rw * rh, L = new Float32Array(n), K = new Float32Array(n), hl = new Uint32Array(256), hk = new Uint32Array(256);
+  for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++){
+    const i = ((ry + y) * stride + rx + x) * 4, r = d[i], g = d[i + 1], b = d[i + 2];
+    const l = 0.299 * r + 0.587 * g + 0.114 * b, k = Math.max(r, g, b) - Math.min(r, g, b), j = y * rw + x;
+    L[j] = l; K[j] = k; hl[l | 0]++; hk[k | 0]++;
+  }
+  const med = h => { let c = 0; for (let v = 0; v < 256; v++){ c += h[v]; if (c >= n / 2) return v; } return 0; };
+  const bg = med(hl), bgk = med(hk), ink = new Float32Array(n); let mx = 0;
+  for (let i = 0; i < n; i++){ const v = Math.max(Math.abs(L[i] - bg), (K[i] - bgk) * 0.8); ink[i] = v; if (v > mx) mx = v; }
+  const thr = Math.max(22, mx * 0.4), out = new Float32Array(rw); let good = 0;
+  for (let x = 0; x < rw; x++){
+    let by = -1, bv = 0;
+    for (let y = 0; y < rh; y++){ const v = ink[y * rw + x]; if (v > bv){ bv = v; by = y; } }
+    if (bv < thr){ out[x] = NaN; continue; }
+    let sw = 0, sy = 0;
+    for (let y = Math.max(0, by - 3); y <= Math.min(rh - 1, by + 3); y++){ const v = ink[y * rw + x]; if (v > thr * 0.5){ sw += v; sy += v * y; } }
+    out[x] = 0.5 - (sy / sw + 0.5) / rh; good++;
+  }
+  if (good < rw * 0.3) return null;
+  let last = NaN;
+  for (let x = 0; x < rw; x++){ if (isFinite(out[x])) last = out[x]; else if (isFinite(last)) out[x] = last; }
+  last = NaN;
+  for (let x = rw - 1; x >= 0; x--){ if (isFinite(out[x])) last = out[x]; else out[x] = last; }
+  return out;
+}
+// 되살린 파형에서 μ파(8–13 Hz) 세기 또는 전체 진폭(분산) 계산
+function eegFeature(tr, fs){
+  const n = tr.length; let mx = 0, my = 0, sxy = 0, sxx = 0;
+  for (let k = 0; k < n; k++){ mx += k; my += tr[k]; } mx /= n; my /= n;
+  for (let k = 0; k < n; k++){ sxy += (k - mx) * (tr[k] - my); sxx += (k - mx) * (k - mx); }
+  const sl = sxy / (sxx || 1), y = new Float32Array(n);
+  for (let k = 0; k < n; k++) y[k] = tr[k] - my - sl * (k - mx);
+  if (E.feat === 'amp' || fs < 27){ let s = 0; for (let k = 0; k < n; k++) s += y[k] * y[k]; return s / n; }
+  let p = 0;
+  for (let f = 8; f <= 13.01; f += 0.5){
+    let re = 0, im = 0; const w0 = 2 * Math.PI * f / fs;
+    for (let k = 0; k < n; k++){ const wv = y[k] * (0.5 - 0.5 * Math.cos(2 * Math.PI * k / (n - 1))); re += wv * Math.cos(w0 * k); im += wv * Math.sin(w0 * k); }
+    p += re * re + im * im;
+  }
+  return p / (n * n) * 100;
+}
+function eegTrack(){
+  if (!C.on || !C.video || C.video.readyState < 2 || C.video.currentTime === E.lastVT) return;
+  E.lastVT = C.video.currentTime;
+  const now = performance.now(), dt = clamp((now - (E.lastT || now - 33)) / 1000, 0.005, 0.25); E.lastT = now;
+  E.nF++; if (now - E.fpsT > 1000){ E.fps = E.nF * 1000 / (now - E.fpsT); E.nF = 0; E.fpsT = now; }
+  const vw = C.video.videoWidth, vh = C.video.videoHeight; if (!vw) return;
+  const sc = Math.min(1, 1280 / vw), W = Math.round(vw * sc), H = Math.round(vh * sc);
+  if (pc.width !== W || pc.height !== H){ pc.width = W; pc.height = H; }
+  pctx.drawImage(C.video, 0, 0, W, H);
+  const chs = CH.filter(c => E.rois[c]); if (!chs.length) return;
+  let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
+  chs.forEach(c => { const r = E.rois[c]; x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y); x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h); });
+  const bx = clamp(Math.floor(x0 * W), 0, W - 1), by = clamp(Math.floor(y0 * H), 0, H - 1);
+  const bw = clamp(Math.ceil(x1 * W) - bx, 1, W - bx), bh = clamp(Math.ceil(y1 * H) - by, 1, H - by);
+  const d = pctx.getImageData(bx, by, bw, bh).data;
+  chs.forEach(c => {
+    const r = E.rois[c], st = E.ch[c] || (E.ch[c] = { ema: null, trace: null, erd: 0, ok: false });
+    const rx = clamp(Math.floor(r.x * W) - bx, 0, bw - 1), ry = clamp(Math.floor(r.y * H) - by, 0, bh - 1);
+    const rw = clamp(Math.round(r.w * W), 1, bw - rx), rh = clamp(Math.round(r.h * H), 1, bh - ry);
+    if (rw < 16 || rh < 6){ st.ok = false; return; }
+    const tr = extractTrace(d, bw, rx, ry, rw, rh);
+    st.trace = tr; st.ok = !!tr; if (!tr) return;
+    if (c === E.elCh || !E.fs) E.fs = rw / E.secW;
+    const f = eegFeature(tr, rw / E.secW);
+    st.ema = st.ema == null ? f : st.ema + (f - st.ema) * clamp(dt / 0.6);
+    if (E.calib > 0) E.acc[c] = (E.acc[c] || 0) + st.ema;
+    const b = E.base[c];
+    st.erd = b ? (E.inv ? st.ema / b - 1 : 1 - st.ema / b) : 0;
+  });
+  if (E.calib > 0){
+    E.accN++; E.calib -= dt;
+    if (E.calib <= 0){ chs.forEach(c => { if (E.acc[c]) E.base[c] = E.acc[c] / E.accN; }); store.set('bciBase', E.base); E.acc = {}; E.accN = 0; }
+  }
+  const ctl = c => { const st = E.ch[c]; if (!st || !st.ok || !E.base[c] || E.calib > 0) return null; return clamp((st.erd - 0.15) / 0.35); };
+  const ue = ctl(E.elCh), ug = E.grCh === 'none' ? null : ctl(E.grCh), k = clamp(dt / 0.2);
+  if (ue != null) E.uEl = E.uEl == null ? ue : E.uEl + (ue - E.uEl) * k;
+  if (E.grCh === 'none') E.uGr = null; else if (ug != null) E.uGr = E.uGr == null ? ug : E.uGr + (ug - E.uGr) * k;
+}
+function drawEegOverlay(w, h){
+  CH.forEach(c => {
+    const r = E.rois[c]; if (!r) return;
+    const col = c === E.elCh ? '#ff5a48' : c === E.grCh ? '#c98bff' : '#5fd3c4', st = E.ch[c];
+    cvx.strokeStyle = col; cvx.lineWidth = 1.5; cvx.strokeRect(r.x * w, r.y * h, r.w * w, r.h * h);
+    cvx.fillStyle = col; cvx.font = '600 12px "IBM Plex Mono", monospace'; cvx.fillText(c, r.x * w + 3, r.y * h + 12);
+    if (st && st.trace){
+      const n = st.trace.length; cvx.strokeStyle = '#f2b84b'; cvx.lineWidth = 1.2; cvx.beginPath();
+      for (let k = 0; k < n; k++){ const X = (r.x + r.w * k / (n - 1)) * w, Y = (r.y + r.h * (0.5 - st.trace[k])) * h; k ? cvx.lineTo(X, Y) : cvx.moveTo(X, Y); }
+      cvx.stroke();
+    }
+  });
+  if (E.drag){
+    const a = E.drag.a, b = E.drag.b; cvx.setLineDash([5, 4]); cvx.strokeStyle = '#f2b84b'; cvx.lineWidth = 1.5;
+    cvx.strokeRect(Math.min(a.x, b.x) * w, Math.min(a.y, b.y) * h, Math.abs(b.x - a.x) * w, Math.abs(b.y - a.y) * h); cvx.setLineDash([]);
+  }
+}
+function hudSrc(){
+  if (role === 'vr') return rxData && rxData.hs ? rxData.hs : '';
+  if (E.mode === 'eeg'){
+    const st = E.ch[E.elCh], has = st && st.ok && E.base[E.elCh];
+    return `제어: EEG ${E.elCh} ${E.feat === 'mu' ? 'μ파' : '진폭'} ${E.inv ? '증가' : '감소'} ${has ? Math.round(st.erd * 100) + '%' : '—'}`;
+  }
+  return C.on ? '제어: 카메라로 본 팔·손' : '제어: 직접 조절';
+}
+// --- EEG 화면 인식 조작 ---
+const chipsEl = $('roiChips');
+['all'].concat(CH).forEach(c => {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.dataset.c = c;
+  b.textContent = c === 'all' ? '전체 한 번에' : c; b.onclick = () => { E.target = c; updChips(); }; chipsEl.appendChild(b);
+});
+function updChips(){ chipsEl.querySelectorAll('.chip').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.c === E.target)); b.classList.toggle('set', b.dataset.c !== 'all' && !!E.rois[b.dataset.c]); }); }
+$('eegOrder').value = E.order.join(', ');
+$('eegOrder').addEventListener('change', e => {
+  const list = e.target.value.split(/[,\s]+/).map(t => CH.find(c => c.toLowerCase() === t.toLowerCase())).filter(Boolean);
+  if (list.length === 5 && new Set(list).size === 5){ E.order = list; store.set('bciOrder', list); $('eegCalInfo').textContent = '패널 순서를 저장했습니다. 전체 영역을 다시 지정해 주세요.'; }
+  else { e.target.value = E.order.join(', '); $('eegCalInfo').textContent = 'Fz, F4, Cz, C4, Pz 다섯 개를 쉼표로 구분해 한 번씩 적어 주세요.'; }
+});
+const resetBase = msg => { E.base = {}; store.set('bciBase', E.base); E.uEl = null; E.uGr = null; $('eegCalInfo').textContent = msg || '설정이 바뀌어 휴식 기준을 다시 잡아야 합니다.'; };
+$('roiClear').onclick = () => { E.rois = {}; E.ch = {}; store.set('bciRois', E.rois); updChips(); resetBase('영역을 지웠습니다.'); };
+const nrm = e => { const r = cv.getBoundingClientRect(); return { x: clamp((e.clientX - r.left) / r.width), y: clamp((e.clientY - r.top) / r.height) }; };
+cv.addEventListener('pointerdown', e => { if (E.mode !== 'eeg') return; const p0 = nrm(e); E.drag = { a: p0, b: p0 }; try { cv.setPointerCapture(e.pointerId); } catch (err) {} });
+cv.addEventListener('pointermove', e => { if (E.drag) E.drag.b = nrm(e); });
+const endRoi = () => {
+  if (!E.drag) return; const { a, b } = E.drag; E.drag = null;
+  const r = { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) };
+  if (r.w < 0.03 || r.h < 0.02) return;
+  if (E.target === 'all') E.order.forEach((c, i) => { E.rois[c] = { x: r.x, y: r.y + r.h * i / 5, w: r.w, h: r.h / 5 }; delete E.ch[c]; });
+  else { E.rois[E.target] = r; delete E.ch[E.target]; }
+  store.set('bciRois', E.rois); updChips(); resetBase('영역을 지정했습니다. 이제 가만히 있는 상태에서 휴식 기준을 잡아 주세요.');
+};
+cv.addEventListener('pointerup', endRoi); cv.addEventListener('pointercancel', () => { E.drag = null; });
+const showSec = () => { $('secWo').textContent = E.secW + '초'; };
+$('secW').value = E.secW; showSec();
+$('secW').addEventListener('input', e => { E.secW = +e.target.value; store.set('bciSecW', E.secW); showSec(); resetBase(); });
+const setFeatUI = () => setSeg('featMu', 'featAmp', E.feat === 'mu');
+$('featMu').onclick = () => { E.feat = 'mu'; store.set('bciFeat', 'mu'); setFeatUI(); resetBase(); };
+$('featAmp').onclick = () => { E.feat = 'amp'; store.set('bciFeat', 'amp'); setFeatUI(); resetBase(); };
+setFeatUI();
+$('elCh').innerHTML = CH.map(c => `<option value="${c}">${c}</option>`).join('');
+$('grCh').innerHTML = '<option value="none">없음 (슬라이더로 조절)</option>' + CH.map(c => `<option value="${c}">${c}</option>`).join('');
+$('elCh').value = E.elCh; $('grCh').value = E.grCh;
+$('elCh').onchange = e => { E.elCh = e.target.value; store.set('bciElCh', E.elCh); E.uEl = null; };
+$('grCh').onchange = e => { E.grCh = e.target.value; store.set('bciGrCh', E.grCh); E.uGr = null; };
+$('eegInv').checked = E.inv;
+$('eegInv').onchange = e => { E.inv = e.target.checked; store.set('bciInv', E.inv); E.uEl = null; E.uGr = null; };
+$('eegCal').onclick = () => {
+  if (!C.on){ $('eegCalInfo').textContent = '먼저 카메라를 켜 주세요.'; return; }
+  if (!CH.some(c => E.rois[c])){ $('eegCalInfo').textContent = '먼저 파형 영역을 지정해 주세요.'; return; }
+  E.calib = 5; E.acc = {}; E.accN = 0;
+};
+$('eegRows').innerHTML = CH.map(c => `<b>${c}</b><canvas class="spark" id="sp_${c}"></canvas><div class="bar"><span id="eb_${c}"></span></div><output id="eo_${c}">—</output>`).join('');
+function spark(c, tr){
+  const el = $('sp_' + c), w = el.clientWidth, h = el.clientHeight; if (!w) return;
+  if (el.width !== w){ el.width = w; el.height = h; }
+  const x = el.getContext('2d'); x.clearRect(0, 0, w, h); if (!tr) return;
+  x.strokeStyle = c === E.elCh ? '#ff5a48' : c === E.grCh ? '#c98bff' : '#5fd3c4'; x.lineWidth = 1; x.beginPath();
+  const n = tr.length; for (let k = 0; k < n; k++){ const X = k / (n - 1) * w, Y = h * (0.5 - tr[k]); k ? x.lineTo(X, Y) : x.moveTo(X, Y); } x.stroke();
+}
+function updateEegUI(){
+  CH.forEach(c => {
+    const st = E.ch[c], has = st && st.ok && E.base[c];
+    spark(c, st && st.ok ? st.trace : null);
+    $('eb_' + c).style.width = has ? clamp(st.erd) * 100 + '%' : '0';
+    $('eo_' + c).textContent = !E.rois[c] ? '영역 없음' : !st || !st.ok ? '안 보임' : has ? Math.round(st.erd * 100) + '%' : '기준 없음';
+  });
+  if (E.calib > 0) $('eegCalInfo').textContent = `가만히 있어 주세요… ${E.calib.toFixed(1)}초`;
+  else if (E.base[E.elCh] && /가만히|측정/.test($('eegCalInfo').textContent)) $('eegCalInfo').textContent = '휴식 기준을 저장했습니다. 이제 팔에 힘을 주거나 움직임을 상상해 보세요.';
+  if (C.on){
+    const n = CH.filter(c => E.ch[c] && E.ch[c].ok).length, lowRes = E.feat === 'mu' && E.fs && E.fs < 27;
+    camMsg(`EEG 화면 읽는 중 · 초당 ${Math.round(E.fps)}회 · 파형 ${n}/${CH.filter(c => E.rois[c]).length}개 인식 · 가로 해상도 초당 ${Math.round(E.fs)}점` +
+      (lowRes ? ' · 해상도가 낮아 μ파 대신 진폭을 씁니다. 태블릿을 카메라에 더 가깝게 두세요.' : ''));
+  }
+}
+function setInMode(m){
+  E.mode = m; store.set('bciInMode', m); setSeg('inArm', 'inEeg', m === 'arm');
+  $('armOpts').hidden = m !== 'arm'; $('armCal').hidden = m !== 'arm'; $('eegBox').hidden = m !== 'eeg';
+  cv.classList.toggle('drawing', m === 'eeg');
+  if (C.on) startCam();
+}
+$('inArm').onclick = () => setInMode('arm');
+$('inEeg').onclick = () => setInMode('eeg');
+updChips();
+
 /* ====================== 크롬북 화면 숫자 ====================== */
 const musList = $('musList');
 MUS_UI.forEach(([k, n, e]) => {
@@ -1148,7 +1398,8 @@ function updateUI(){
   const a = act();
   $('vAng').textContent = Math.round(A.th / DEG) + '°'; $('vGrip').textContent = Math.round(A.g * 100) + '%';
   MUS_UI.forEach(([k]) => { $('mb_' + k).style.width = clamp(a[k]) * 100 + '%'; $('mo_' + k).textContent = Math.round(clamp(a[k]) * 100) + '%'; });
-  if (C.on && C.pose && C.hands)
+  if (E.mode === 'eeg') updateEegUI();
+  else if (C.on && C.pose && C.hands)
     camMsg(`추적 중 · 초당 ${Math.round(C.fps)}회 분석 · 팔 인식 ${C.ok ? '양호' : '불안정'} (신뢰도 ${C.conf.toFixed(2)}) · 손 ${C.hpts ? '인식됨' : '안 보임'}`);
   if (vrPreview) $('pvInfo').textContent = remoteFresh() ? '휴대폰을 쓴 사람의 시선과 렌즈 설정을 그대로 보여 주는 중입니다.' : '휴대폰이 연결되지 않아 기본 렌즈 값으로 보여 줍니다. 드래그로 둘러볼 수 있습니다.';
 }
@@ -1167,7 +1418,7 @@ $('pickSend').onclick = () => startRole('send');
 $('pickVr').onclick = () => startRole('vr');
 
 /* ====================== 메인 루프 ====================== */
-applyMode('skin'); placeBoard();
+applyMode('skin'); placeBoard(); setInMode(E.mode);
 if (location.hash === '#send' || location.hash === '#vr') startRole(location.hash.slice(1));
 let last = performance.now(), acc = 0, hudT = 0, uiT = 0, netT = 0, tt = 0, sendT = 0;
 function demoTargets(){ A.thT = (72 + 62 * Math.sin(tt * 0.7)) * DEG; A.gT = 0.5 + 0.5 * Math.sin(tt * 1.1); }
@@ -1182,9 +1433,15 @@ function frame(now){
       if (rxData.ms !== lastMs){ lastMs = rxData.ms; if (rxData.m && rxData.m !== viewMode) applyMode(rxData.m); }
     } else if ($('demo').checked){ demoTargets(); simulate(dt); }
   } else if (role === 'send'){
-    camTrack();
-    A.thT = (C.on && C.angle != null ? C.angle : +$('manEl').value) * DEG;
-    A.gT = C.on && C.grip != null ? C.grip : +$('manGr').value / 100;
+    if (E.mode === 'eeg'){
+      eegTrack();
+      A.thT = (E.uEl != null ? 5 + E.uEl * 125 : +$('manEl').value) * DEG;
+      A.gT = E.uGr != null ? E.uGr : +$('manGr').value / 100;
+    } else {
+      camTrack();
+      A.thT = (C.on && C.angle != null ? C.angle : +$('manEl').value) * DEG;
+      A.gT = C.on && C.grip != null ? C.grip : +$('manGr').value / 100;
+    }
     simulate(dt);
     netT += dt; if (netT > 0.033){ netT = 0; broadcast(); }
   } else { demoTargets(); simulate(dt); }
