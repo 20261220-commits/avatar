@@ -485,13 +485,13 @@ const skinMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, vertexColors: 
   clearcoat: 0.22, clearcoatRoughness: 0.42, normalMap: skinNormalTex(), normalScale: new THREE.Vector2(0.45, 0.45), emissive: 0x160603 });
 // 피하 산란 근사: 빛이 피부 속을 지나 가장자리가 붉게 비치는 효과
 const coldU = { p: { value: V(0, -10, 0) }, k: { value: 0 }, r: { value: 0.055 },
-  w: { value: 0 }, wd: { value: V(1, 0, 0) }, t: { value: 0 }, g: { value: 0 } };
+  w: { value: 0 }, wd: { value: V(1, 0, 0) }, t: { value: 0 } };
 skinMat.onBeforeCompile = sh => {
   // 차가운 물체가 닿은 자리: 핏기가 빠진 듯 창백하고 푸르스름하게
   sh.uniforms.uColdP = coldU.p; sh.uniforms.uCold = coldU.k; sh.uniforms.uColdR = coldU.r;
-  sh.uniforms.uWind = coldU.w; sh.uniforms.uWDir = coldU.wd; sh.uniforms.uTime = coldU.t; sh.uniforms.uGoose = coldU.g;
+  sh.uniforms.uWind = coldU.w; sh.uniforms.uWDir = coldU.wd; sh.uniforms.uTime = coldU.t;
   sh.vertexShader = 'varying vec3 vWP;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  vWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
-  sh.fragmentShader = 'uniform vec3 uColdP; uniform float uCold; uniform float uColdR; uniform float uWind; uniform vec3 uWDir; uniform float uTime; uniform float uGoose; varying vec3 vWP;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+  sh.fragmentShader = 'uniform vec3 uColdP; uniform float uCold; uniform float uColdR; uniform float uWind; uniform vec3 uWDir; uniform float uTime; varying vec3 vWP;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
     { float kc = uCold * (1.0 - smoothstep(uColdR * 0.35, uColdR, distance(vWP, uColdP)));
       diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.8, 0.87, 1.0) + vec3(0.05, 0.06, 0.09), kc); }
     // 바람결: 바람 방향으로 흘러가는 옅은 서늘한 물결이 피부 위를 지나감
@@ -499,11 +499,6 @@ skinMat.onBeforeCompile = sh => {
       float band = smoothstep(0.82, 1.0, sin(ph));
       diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.95, 0.97, 1.0), 0.25 * uWind);
       diffuseColor.rgb += vec3(0.045, 0.05, 0.06) * band * uWind; }`);
-  // 닭살: 피부 표면이 오돌토돌해짐 (차가움·센 바람)
-  sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
-    { vec3 q = vWP * 1150.0;
-      vec3 g = vec3(sin(q.x) * cos(q.y * 1.31), sin(q.y + 1.7) * cos(q.z * 1.13), sin(q.z + 2.3) * cos(q.x * 0.87));
-      normal = normalize(normal + uGoose * 0.32 * g); }`);
   sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
     { float ndv = clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0);
       float rim = pow(1.0 - ndv, 2.2);
@@ -897,12 +892,15 @@ function drawHud(){
 
 /* ====================== 신체 소유감 자극 연출 (바람·차가움·종이) ====================== */
 const STIM = { w: 0, wd: 'side', o: 'none', c: 0, s: 0.8, sd: 1, h: 1, f: 'out' };
-const FX = { wind: 0, cold: 0, goose: 0, wd: null, t: 0 };
+const FX = { wind: 0, cold: 0, wd: null, t: 0, press: 0 };
 // 팔 표면 위 한 점: 팔 길이 방향 위치(su)와 닿는 면(face)으로 피부 꼭짓점을 고름
 const FACE = { out: V(-1, 0, 0), in: V(1, 0, 0), front: V(0, 0, 1), back: V(0, 0, -1) };
 function surface(su, face){
   const R = armSkin.R, S1 = armSkin.S + 1, pos = armSkin.pos, nor = armSkin.geo.attributes.normal.array;
-  const i = clamp(Math.round((su + ARM_TOP) / ARM_LEN * (R - 1)), 1, R - 2), D = FACE[face] || FACE.out;
+  const i = clamp(Math.round((su + ARM_TOP) / ARM_LEN * (R - 1)), 1, R - 2), D0 = FACE[face] || FACE.out;
+  // 아래팔에서는 '앞·뒤'가 아래팔과 함께 굽음 (팔을 굽혀도 바깥으로 드러난 면에 닿도록)
+  const ct = Math.cos(A.th), st = Math.sin(A.th);
+  const D = su > L1 ? V(D0.x, D0.y * ct + D0.z * st, -D0.y * st + D0.z * ct) : D0;
   let bj = 0, bd = -2;
   for (let j = 0; j < S1 - 1; j++){ const b = (i * S1 + j) * 3, d = nor[b] * D.x + nor[b + 1] * D.y + nor[b + 2] * D.z; if (d > bd){ bd = d; bj = j; } }
   const b = (i * S1 + bj) * 3, b2 = ((i + 1) * S1 + bj) * 3;
@@ -912,7 +910,7 @@ function surface(su, face){
   for (let j = 0; j < S1 - 1; j++){ const q = (i * S1 + j) * 3; cx += pos[q]; cy += pos[q + 1]; cz += pos[q + 2]; }
   const rad = pl.distanceTo(V(cx / (S1 - 1), cy / (S1 - 1), cz / (S1 - 1)));
   const M = armRoot.matrixWorld;
-  return { pl, nl, tl, rad, p: pl.clone().applyMatrix4(M), n: nl.clone().transformDirection(M), t: tl.clone().transformDirection(M) };
+  return { i, j: bj, pl, nl, tl, rad, p: pl.clone().applyMatrix4(M), n: nl.clone().transformDirection(M), t: tl.clone().transformDirection(M) };
 }
 // 선풍기
 const TGT = V(0, 1.05, 0.12), FAN_POS = { side: V(0.62, 1.05, -0.25), front: V(0.02, 1.0, 0.85), top: V(0.05, 1.85, 0.12) };
@@ -1019,25 +1017,81 @@ const paperTex = (() => {
   x.strokeStyle = 'rgba(220,80,80,0.4)'; x.beginPath(); x.moveTo(36, 0); x.lineTo(36, 360); x.stroke();
   return new THREE.CanvasTexture(c);
 })();
-// 종이 크기: 팔을 가로지르는 폭 7.5 cm × 팔 길이 방향 10.5 cm, 팔 둘레를 따라 휘어 면 전체가 피부에 붙음
-const PW = 0.075, PL = 0.105, PNX = 10, PNZ = 14;
+// 종이 크기: 팔 둘레 방향 9 cm × 팔 길이 방향 7 cm
+const PW = 0.09, PL = 0.07, PNX = 10, PNZ = 14;
 const paperGeo = new THREE.BufferGeometry(), paperPos = new Float32Array((PNX + 1) * (PNZ + 1) * 3);
 { const uv = new Float32Array((PNX + 1) * (PNZ + 1) * 2), idx = [];
   for (let iz = 0; iz <= PNZ; iz++) for (let ix = 0; ix <= PNX; ix++){ const k = iz * (PNX + 1) + ix; uv[k * 2] = ix / PNX; uv[k * 2 + 1] = 1 - iz / PNZ; }
   for (let iz = 0; iz < PNZ; iz++) for (let ix = 0; ix < PNX; ix++){ const a = iz * (PNX + 1) + ix, b = a + 1, c = a + PNX + 1, d = c + 1; idx.push(a, c, b, b, c, d); }
   paperGeo.setAttribute('position', new THREE.BufferAttribute(paperPos, 3)); paperGeo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); paperGeo.setIndex(idx); }
-let paperR = -1;
-function bendPaper(R){
-  if (Math.abs(R - paperR) < 0.0005) return; paperR = R;
-  const Rw = R + 0.0015;
+// 피부 메쉬 위의 임의 지점(고리 번호 fi, 둘레 번호 fj 사이를 보간)의 위치와 법선
+function skinAt(fi, fj, P, N){
+  const R = armSkin.R, S = armSkin.S, S1 = S + 1, pos = armSkin.pos, nor = armSkin.geo.attributes.normal.array;
+  fi = clamp(fi, 0, R - 1.0001); const i0 = Math.floor(fi), ti = fi - i0;
+  fj = ((fj % S) + S) % S; const j0 = Math.floor(fj), tj = fj - j0;
+  const w = [(1 - ti) * (1 - tj), (1 - ti) * tj, ti * (1 - tj), ti * tj];
+  const id = [i0 * S1 + j0, i0 * S1 + j0 + 1, (i0 + 1) * S1 + j0, (i0 + 1) * S1 + j0 + 1];
+  P.set(0, 0, 0); N.set(0, 0, 0);
+  for (let q = 0; q < 4; q++){ const b = id[q] * 3;
+    P.x += pos[b] * w[q]; P.y += pos[b + 1] * w[q]; P.z += pos[b + 2] * w[q];
+    N.x += nor[b] * w[q]; N.y += nor[b + 1] * w[q]; N.z += nor[b + 2] * w[q]; }
+  N.normalize(); return P;
+}
+// 종이: 공중에서는 평평하다가, 닿으면 0.12초에 걸쳐 살짝 휘며 피부 곡면에 맞닿음.
+// 모든 점을 피부보다 1.2 mm 위에 두어 팔을 뚫지 않고, 종이 끝은 빳빳해서 조금 들림
+const PGAP = 0.0012;
+const _P = V(), _N = V(), _F = V(), _Pc = V(), _Nc = V(), _Ta = V(), _Tb = V(), _q = V();
+function shapePaper(su, face, hov, dt){
+  const R = armSkin.R, S = armSkin.S, ds = ARM_LEN / (R - 1);
+  // 종이가 팔꿈치를 가로질러 걸치지 않도록 위팔 또는 아래팔 한쪽에만 놓음
+  su = su < L1 - 0.012 ? clamp(su, PL / 2 + 0.005, L1 - PL / 2 - 0.012) : clamp(su, L1 + PL / 2 + 0.012, L1 + L2 - PL / 2);
+  const sf = surface(su, face), ic = (su + ARM_TOP) / ARM_LEN * (R - 1), jc = sf.j, rad = clamp(sf.rad, 0.012, 0.06);
+  skinAt(ic, jc, _Pc, _Nc);
+  const Tc = skinAt(ic + 0.5, jc, _Ta, _q).clone().sub(skinAt(ic - 0.5, jc, _Tb, _q)).normalize();
+  const Xc = skinAt(ic, jc + 0.5, _Ta, _q).clone().sub(skinAt(ic, jc - 0.5, _Tb, _q)).normalize();
+  FX.press += ((hov === 0 ? 1 : 0) - FX.press) * clamp(dt / 0.12);
+  const pr = FX.press * FX.press * (3 - 2 * FX.press);
   for (let iz = 0; iz <= PNZ; iz++) for (let ix = 0; ix <= PNX; ix++){
-    const x = (ix / PNX - 0.5) * PW, z = (iz / PNZ - 0.5) * PL, a = x / Rw, ez = Math.abs(z) / (PL / 2), k = (iz * (PNX + 1) + ix) * 3;
-    paperPos[k] = Rw * Math.sin(a); paperPos[k + 1] = Rw * Math.cos(a) - R + 0.003 * ez * ez * ez; paperPos[k + 2] = z;
+    const x = (ix / PNX - 0.5) * PW, z = (iz / PNZ - 0.5) * PL, ex = Math.abs(x) / (PW / 2), ez = Math.abs(z) / (PL / 2);
+    skinAt(ic + z / ds, jc + x / rad * S / (2 * Math.PI), _P, _N);           // 바로 아래 피부 점
+    const lift = PGAP + 0.0022 * ez * ez * ez + 0.0008 * ex * ex * ex;      // 끝이 살짝 들림
+    _q.copy(_P).addScaledVector(_N, lift);                                   // 피부에 맞닿은 모양
+    _F.copy(_Pc).addScaledVector(_Nc, PGAP + hov).addScaledVector(Xc, x).addScaledVector(Tc, z);  // 평평한 모양
+    _F.lerp(_q, pr);
+    const h = _F.clone().sub(_P).dot(_N);                                    // 피부보다 아래로 들어가면 밖으로 밀어냄
+    if (h < lift) _F.addScaledVector(_N, lift - h);
+    const k = (iz * (PNX + 1) + ix) * 3; paperPos[k] = _F.x; paperPos[k + 1] = _F.y; paperPos[k + 2] = _F.z;
   }
+  pushOutOfArm(paperPos);
   paperGeo.attributes.position.needsUpdate = true; paperGeo.computeVertexNormals();
 }
+// 종이의 점이 팔의 어느 부분(위팔·아래팔·접힌 팔꿈치) 속에든 들어가 있으면 피부 밖으로 밀어냄
+const RC = armSkin.R, ringC = new Float32Array(RC * 3), ringT = new Float32Array(RC * 3);
+function pushOutOfArm(arr){
+  const S = armSkin.S, S1 = S + 1, pos = armSkin.pos;
+  for (let i = 0; i < RC; i++){ let x = 0, y = 0, z = 0;
+    for (let j = 0; j < S; j++){ const q = (i * S1 + j) * 3; x += pos[q]; y += pos[q + 1]; z += pos[q + 2]; }
+    ringC[i * 3] = x / S; ringC[i * 3 + 1] = y / S; ringC[i * 3 + 2] = z / S; }
+  for (let i = 0; i < RC; i++){ const a = Math.max(0, i - 1) * 3, b = Math.min(RC - 1, i + 1) * 3;
+    let x = ringC[b] - ringC[a], y = ringC[b + 1] - ringC[a + 1], z = ringC[b + 2] - ringC[a + 2], l = Math.hypot(x, y, z) || 1;
+    ringT[i * 3] = x / l; ringT[i * 3 + 1] = y / l; ringT[i * 3 + 2] = z / l; }
+  const half = ARM_LEN / (RC - 1) * 0.6;
+  for (let pass = 0; pass < 4; pass++) for (let k = 0; k < arr.length; k += 3){
+    for (let i = 0; i < RC; i++){
+      const c = i * 3, dx = arr[k] - ringC[c], dy = arr[k + 1] - ringC[c + 1], dz = arr[k + 2] - ringC[c + 2];
+      if (dx * dx + dy * dy + dz * dz > 0.0081) continue;
+      const al = dx * ringT[c] + dy * ringT[c + 1] + dz * ringT[c + 2]; if (Math.abs(al) > half) continue;
+      const rx = dx - al * ringT[c], ry = dy - al * ringT[c + 1], rz = dz - al * ringT[c + 2], rr = Math.hypot(rx, ry, rz) || 1e-6;
+      let bd = -2, rDir = 0;
+      for (let j = 0; j < S; j++){ const q = (i * S1 + j) * 3, vx = pos[q] - ringC[c], vy = pos[q + 1] - ringC[c + 1], vz = pos[q + 2] - ringC[c + 2], vl = Math.hypot(vx, vy, vz) || 1;
+        const d = (vx * rx + vy * ry + vz * rz) / (vl * rr); if (d > bd){ bd = d; rDir = vl; } }
+      const need = rDir + PGAP;
+      if (rr < need){ const f = (need - rr) / rr; arr[k] += rx * f; arr[k + 1] += ry * f; arr[k + 2] += rz * f; }
+    }
+  }
+}
 const paper = new THREE.Mesh(paperGeo, new THREE.MeshStandardMaterial({ map: paperTex, side: THREE.DoubleSide, roughness: 0.92 }));
-paper.frustumCulled = false; paper.visible = false; scene.add(paper);
+paper.frustumCulled = false; paper.visible = false; armRoot.add(paper);
 const basisQ = (x, y, z) => new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
 function updateStim(dt){
   FX.t += dt; const k = STIM;
@@ -1056,18 +1110,12 @@ function updateStim(dt){
     const x = surf.t.clone(), y = surf.n.clone(), z = V().crossVectors(x, y).normalize(); x.crossVectors(y, z);
     ice.quaternion.copy(basisQ(x, y, z)); ice.position.copy(surf.p).addScaledVector(surf.n, 0.011 + hov); updateMist(dt);
   }
-  if (paper.visible){
-    // 종이 면의 법선 = 피부 법선, 종이 세로 = 팔 길이 방향 → 면 전체가 피부에 닿은 채 미끄러짐
-    bendPaper(clamp(surf.rad, 0.015, 0.06));
-    const y = surf.n.clone(), z = surf.t.clone(), x = V().crossVectors(y, z).normalize(); z.crossVectors(x, y).normalize();
-    paper.quaternion.copy(basisQ(x, y, z)); paper.position.copy(surf.p).addScaledVector(surf.n, hov);
-  }
+  if (paper.visible) shapePaper(clamp(k.s) * (L1 + L2), k.f, hov, dt);
   const coldT = k.o === 'cold' && k.c ? 1 : 0;
   FX.cold += (coldT - FX.cold) * clamp(dt / (coldT > FX.cold ? 1.2 : 4));
   if (surf && k.o === 'cold') coldU.p.value.copy(surf.p);
   coldU.k.value = FX.cold;
-  FX.goose += (clamp(FX.cold * 1.2 + Math.max(0, FX.wind - 0.45) * 1.5) - FX.goose) * clamp(dt / 1.5);
-  coldU.w.value = FX.wind; coldU.wd.value.copy(wdir); coldU.t.value = FX.t; coldU.g.value = FX.goose;
+  coldU.w.value = FX.wind; coldU.wd.value.copy(wdir); coldU.t.value = FX.t;
 }
 
 /* ====================== 카메라 시점 ====================== */
