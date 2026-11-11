@@ -68,7 +68,13 @@ input[type=range]{width:100%;accent-color:var(--eeg)}
 .txt{background:#0b1013;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:7px 9px;font-family:var(--mono);font-size:13px;width:100%;box-sizing:border-box}
 select{background:#0b1013;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:5px 8px;font:inherit;font-size:13px}
 #camView.drawing{cursor:crosshair;touch-action:none}
-#eegBox .label{margin-top:8px}
+#eegBox .label,#stimSec .label{margin-top:8px}
+.guide{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;font-size:12px;color:var(--muted)}
+.guide .track{position:relative;height:8px;background:#1c272e;border-radius:4px}
+.guide .dot{position:absolute;top:50%;left:0;width:18px;height:18px;margin-top:-9px;border-radius:50%;background:#3a4a54;transform:translateX(-50%)}
+.guide.on .dot{background:var(--power);box-shadow:0 0 12px var(--power)}
+.gtxt{font-size:15px;font-weight:600;min-height:1.5em}
+.btn[aria-pressed="true"]{background:var(--power);border-color:var(--power);color:#1a1405;font-weight:600}
 .mus .bar span{display:block;height:100%;width:0;background:var(--muscle)}
 .mus .bar.ext span{background:#c98bff}
 .mus output{font-family:var(--mono);text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -285,6 +291,54 @@ body:not(.role-vr) #vrset, body:not(.role-vr) #vrtip{display:none}
       </div>
     </section>
 
+    <section class="blk" id="stimSec">
+      <p class="label">신체 소유감 자극 · 현실과 VR 같이 느끼기</p>
+      <p class="note">실제로 선풍기 바람, 차가운 물체, 종이가 팔에 닿는 순간 VR에서도 같은 일이 같은 곳에 보이면 가상 팔을 내 팔처럼 느끼기 쉬워집니다(고무손 착시 원리).</p>
+      <div class="seg" role="group" aria-label="자극 맞추는 방법">
+        <button type="button" id="smGuide" aria-pressed="true">화면 안내에 맞추기</button>
+        <button type="button" id="smCam" aria-pressed="false">카메라로 따라가기</button>
+        <button type="button" id="smMan" aria-pressed="false">직접 조절</button>
+      </div>
+      <p class="note" id="smInfo"></p>
+      <div id="guideBox" class="blk">
+        <div class="guide" id="guide"><span>팔꿈치</span><div class="track"><div class="dot" id="gDot"></div></div><span>손목</span></div>
+        <div class="gtxt" id="gTxt"></div>
+      </div>
+
+      <p class="label">바람 (선풍기)</p>
+      <button class="btn" id="fanBtn" type="button" aria-pressed="false">선풍기 바람 켜짐 (W)</button>
+      <div class="field"><div class="row"><label for="fanPow">바람 세기</label><output id="fanPowO"></output></div><input type="range" id="fanPow" min="0.1" max="1" step="0.05"></div>
+      <div class="field"><div class="row"><label for="fanDir">선풍기 위치</label><select id="fanDir"><option value="side">팔 바깥쪽 옆</option><option value="front">앞</option><option value="top">위</option></select></div></div>
+
+      <p class="label">팔에 대는 물건</p>
+      <div class="seg" role="group" aria-label="팔에 대는 물건">
+        <button type="button" id="objNone" aria-pressed="true">없음 (1)</button>
+        <button type="button" id="objCold" aria-pressed="false">차가운 물체 (2)</button>
+        <button type="button" id="objPaper" aria-pressed="false">종이 (3)</button>
+      </div>
+      <div class="field"><div class="row"><label for="face">닿는 면</label><select id="face"><option value="out">팔 바깥쪽</option><option value="in">팔 안쪽</option><option value="front">몸 앞쪽</option><option value="back">몸 뒤쪽</option></select></div></div>
+      <div id="manStim" class="blk">
+        <div class="field"><div class="row"><label for="stimPos">닿는 위치 (어깨 0% · 팔꿈치 63% · 손목 100%)</label><output id="stimPosO"></output></div><input type="range" id="stimPos" min="0" max="1" step="0.01"></div>
+        <button class="btn" id="touchBtn" type="button" aria-pressed="false">누르고 있는 동안 닿음 (Space)</button>
+      </div>
+      <div id="guideOpts" class="blk">
+        <div class="field"><div class="row"><label for="period">한 번 문지르는 시간</label><output id="periodO"></output></div><input type="range" id="period" min="1.2" max="5" step="0.1"></div>
+        <label class="check"><input type="checkbox" id="beep" checked> 닿기 시작할 때 소리 내기</label>
+      </div>
+
+      <p class="label">대조 실험용 시간 차이</p>
+      <div class="seg" role="group" aria-label="VR 표시 지연">
+        <button type="button" id="dl0" aria-pressed="true">동시</button>
+        <button type="button" id="dl05" aria-pressed="false">0.5초 늦게</button>
+        <button type="button" id="dl1" aria-pressed="false">1초 늦게</button>
+      </div>
+      <p class="note">같은 자극을 "동시"와 "늦게" 두 조건으로 주고 소유감 설문을 비교하면, 시간이 맞을 때 소유감이 커지는지 확인할 수 있습니다.</p>
+
+      <p class="label">센서 연결 (선택)</p>
+      <button class="btn" id="serBtn" type="button">아두이노 센서 연결</button>
+      <p class="note" id="serInfo">온도·바람·접촉 센서를 USB로 연결하면 실제 자극이 자동으로 VR에 반영됩니다. 보낼 형식: TEMP:18.5 / WIND:0.6 / TOUCH:1 / POS:0.8 (한 줄에 하나, 9600bps)</p>
+    </section>
+
     <section class="blk">
       <p class="label">현재 상태</p>
       <div class="stats">
@@ -430,7 +484,14 @@ function fiberTex(){
 const skinMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.62, roughnessMap: skinRoughTex(), metalness: 0,
   clearcoat: 0.22, clearcoatRoughness: 0.42, normalMap: skinNormalTex(), normalScale: new THREE.Vector2(0.45, 0.45), emissive: 0x160603 });
 // 피하 산란 근사: 빛이 피부 속을 지나 가장자리가 붉게 비치는 효과
+const coldU = { p: { value: V(0, -10, 0) }, k: { value: 0 }, r: { value: 0.055 } };
 skinMat.onBeforeCompile = sh => {
+  // 차가운 물체가 닿은 자리: 핏기가 빠진 듯 창백하고 푸르스름하게
+  sh.uniforms.uColdP = coldU.p; sh.uniforms.uCold = coldU.k; sh.uniforms.uColdR = coldU.r;
+  sh.vertexShader = 'varying vec3 vWP;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  vWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+  sh.fragmentShader = 'uniform vec3 uColdP; uniform float uCold; uniform float uColdR; varying vec3 vWP;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+    { float kc = uCold * (1.0 - smoothstep(uColdR * 0.35, uColdR, distance(vWP, uColdP)));
+      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.8, 0.87, 1.0) + vec3(0.05, 0.06, 0.09), kc); }`);
   sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
     { float ndv = clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0);
       float rim = pow(1.0 - ndv, 2.2);
@@ -822,6 +883,164 @@ function drawHud(){
   hudTex.needsUpdate = true;
 }
 
+/* ====================== 신체 소유감 자극 연출 (바람·차가움·종이) ====================== */
+const STIM = { w: 0, wd: 'side', o: 'none', c: 0, s: 0.8, sd: 1, h: 1, f: 'out' };
+const FX = { wind: 0, cold: 0, goose: 0, wd: null, t: 0 };
+// 팔 표면 위 한 점: 팔 길이 방향 위치(su)와 닿는 면(face)으로 피부 꼭짓점을 고름
+const FACE = { out: V(-1, 0, 0), in: V(1, 0, 0), front: V(0, 0, 1), back: V(0, 0, -1) };
+function surface(su, face){
+  const R = armSkin.R, S1 = armSkin.S + 1, pos = armSkin.pos, nor = armSkin.geo.attributes.normal.array;
+  const i = clamp(Math.round((su + ARM_TOP) / ARM_LEN * (R - 1)), 1, R - 2), D = FACE[face] || FACE.out;
+  let bj = 0, bd = -2;
+  for (let j = 0; j < S1 - 1; j++){ const b = (i * S1 + j) * 3, d = nor[b] * D.x + nor[b + 1] * D.y + nor[b + 2] * D.z; if (d > bd){ bd = d; bj = j; } }
+  const b = (i * S1 + bj) * 3, b2 = ((i + 1) * S1 + bj) * 3;
+  const pl = V(pos[b], pos[b + 1], pos[b + 2]), nl = V(nor[b], nor[b + 1], nor[b + 2]).normalize();
+  const tl = V(pos[b2] - pos[b], pos[b2 + 1] - pos[b + 1], pos[b2 + 2] - pos[b + 2]).normalize();
+  const M = armRoot.matrixWorld;
+  return { pl, nl, tl, p: pl.clone().applyMatrix4(M), n: nl.clone().transformDirection(M), t: tl.clone().transformDirection(M) };
+}
+// 팔 털: 바람에 흔들리고, 차가우면 서고(닭살), 종이가 지나가면 그 방향으로 눕음
+const HAIR_N = 1000, hairs = [];
+for (let k = 0; k < HAIR_N; k++){
+  let su, j, tries = 0;
+  do {
+    su = Math.random() < 0.65 ? L1 + 0.01 + Math.random() * (L2 - 0.02) : 0.02 + Math.random() * (L1 - 0.03);
+    j = Math.random() * armSkin.S | 0; const ph = j / armSkin.S * Math.PI * 2;
+    if (Math.random() < 0.25 + 0.75 * clamp(-Math.cos(ph) * 0.6 - Math.sin(ph) * 0.6 + 0.3)) break;
+  } while (++tries < 8);
+  hairs.push({ i: clamp(Math.round((su + ARM_TOP) / ARM_LEN * (armSkin.R - 1)), 0, armSkin.R - 2), j,
+    len: (su > L1 ? 0.0035 : 0.0025) + Math.random() * 0.003, seed: Math.random() * 6.283 });
+}
+const hairPos = new Float32Array(HAIR_N * 6), hairGeo = new THREE.BufferGeometry();
+hairGeo.setAttribute('position', new THREE.BufferAttribute(hairPos, 3));
+const hairMesh = new THREE.LineSegments(hairGeo, new THREE.LineBasicMaterial({ color: 0x3b2619, transparent: true, opacity: 0.5, depthWrite: false }));
+hairMesh.frustumCulled = false; armRoot.add(hairMesh);
+function updateHairs(windL, paper){
+  const S1 = armSkin.S + 1, pos = armSkin.pos, nor = armSkin.geo.attributes.normal.array, g = FX.goose;
+  const n = V(), tg = V(), d = V(), p = V();
+  for (let k = 0; k < HAIR_N; k++){
+    const h = hairs[k], b = (h.i * S1 + h.j) * 3, b2 = ((h.i + 1) * S1 + h.j) * 3;
+    p.set(pos[b], pos[b + 1], pos[b + 2]); n.set(nor[b], nor[b + 1], nor[b + 2]).normalize();
+    tg.set(pos[b2] - pos[b], pos[b2 + 1] - pos[b + 1], pos[b2 + 2] - pos[b + 2]).normalize();
+    d.copy(tg).multiplyScalar(0.95).addScaledVector(n, 0.22 + g * 0.8);
+    if (FX.wind > 0.01) d.addScaledVector(windL, FX.wind * 1.3 * (0.55 + 0.45 * Math.sin(FX.t * (9 + h.seed) + h.seed * 3)));
+    if (paper && p.distanceTo(paper.p) < 0.022) d.copy(paper.dir).addScaledVector(n, 0.05);
+    d.normalize(); const dn = d.dot(n); if (dn < 0.05) d.addScaledVector(n, 0.05 - dn).normalize();
+    const o = k * 6, bx = p.x + n.x * 0.0002, by = p.y + n.y * 0.0002, bz = p.z + n.z * 0.0002;
+    hairPos[o] = bx; hairPos[o + 1] = by; hairPos[o + 2] = bz;
+    hairPos[o + 3] = bx + d.x * h.len; hairPos[o + 4] = by + d.y * h.len; hairPos[o + 5] = bz + d.z * h.len;
+  }
+  hairGeo.attributes.position.needsUpdate = true;
+}
+// 선풍기
+const TGT = V(0, 1.05, 0.12), FAN_POS = { side: V(0.62, 1.05, -0.25), front: V(0.02, 1.0, 0.85), top: V(0.05, 1.85, 0.12) };
+const fan = new THREE.Group(); scene.add(fan);
+const fanMat = new THREE.MeshStandardMaterial({ color: 0xd9dee2, roughness: 0.5 });
+const bladeMat = new THREE.MeshStandardMaterial({ color: 0x9fc7e6, roughness: 0.35, transparent: true, opacity: 0.85 });
+const rotor = new THREE.Group(); fan.add(rotor);
+for (let b = 0; b < 5; b++){ const arm = new THREE.Group(); arm.rotation.z = b / 5 * Math.PI * 2; const bl = new THREE.Mesh(sphG, bladeMat); bl.scale.set(0.045, 0.1, 0.006); bl.position.set(0, 0.075, 0); arm.add(bl); rotor.add(arm); }
+{ const hub = new THREE.Mesh(cylG, fanMat); hub.rotation.x = Math.PI / 2; hub.scale.set(0.03, 0.04, 0.03); fan.add(hub);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.004, 6, 48), fanMat); fan.add(ring);
+  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.003, 6, 48), fanMat); ring2.position.z = -0.05; fan.add(ring2);
+  const motor = new THREE.Mesh(sphG, fanMat); motor.position.z = -0.08; motor.scale.set(0.055, 0.055, 0.07); fan.add(motor); }
+const fanStand = new THREE.Mesh(cylG, fanMat); scene.add(fanStand);
+function placeFan(wd){
+  const fp = FAN_POS[wd] || FAN_POS.side; fan.position.copy(fp); fan.lookAt(TGT);
+  fanStand.visible = wd !== 'top'; fanStand.position.set(fp.x, fp.y / 2 - 0.05, fp.z); fanStand.scale.set(0.012, fp.y - 0.1, 0.012);
+}
+fan.visible = false; fanStand.visible = false;
+// 바람 줄기
+const STK = 150, stkPos = new Float32Array(STK * 6), stkGeo = new THREE.BufferGeometry();
+stkGeo.setAttribute('position', new THREE.BufferAttribute(stkPos, 3));
+const stkMat = new THREE.LineBasicMaterial({ color: 0xe8f4ff, transparent: true, opacity: 0, depthWrite: false });
+const stkMesh = new THREE.LineSegments(stkGeo, stkMat); stkMesh.frustumCulled = false; scene.add(stkMesh);
+const stk = Array.from({ length: STK }, () => ({ p: V(), init: false }));
+function respawn(sk, fp, dir, along){
+  const u = V().crossVectors(dir, Math.abs(dir.y) > 0.9 ? V(1, 0, 0) : V(0, 1, 0)).normalize(), v = V().crossVectors(dir, u);
+  const r = Math.sqrt(Math.random()) * 0.18, a = Math.random() * 6.283;
+  sk.p.copy(fp).addScaledVector(u, Math.cos(a) * r).addScaledVector(v, Math.sin(a) * r).addScaledVector(dir, 0.05 + along * Math.random());
+}
+function updateStreaks(dt, fp, dir){
+  stkMat.opacity = 0.3 * FX.wind; stkMesh.visible = FX.wind > 0.01; if (!stkMesh.visible) return;
+  const sp = 0.8 + 2.4 * FX.wind, ln = 0.02 + 0.07 * FX.wind, dist = fp.distanceTo(TGT) + 0.5, rel = V();
+  stk.forEach((sk, k) => {
+    if (!sk.init){ respawn(sk, fp, dir, dist); sk.init = true; }
+    sk.p.addScaledVector(dir, sp * dt); sk.p.y += Math.sin(FX.t * 3 + k) * 0.02 * dt;
+    if (rel.subVectors(sk.p, fp).dot(dir) > dist) respawn(sk, fp, dir, 0.1);
+    const o = k * 6; stkPos[o] = sk.p.x; stkPos[o + 1] = sk.p.y; stkPos[o + 2] = sk.p.z;
+    stkPos[o + 3] = sk.p.x - dir.x * ln; stkPos[o + 4] = sk.p.y - dir.y * ln; stkPos[o + 5] = sk.p.z - dir.z * ln;
+  });
+  stkGeo.attributes.position.needsUpdate = true;
+}
+// 차가운 물체 (얼음주머니) + 찬 김
+const ice = new THREE.Group(); scene.add(ice); ice.visible = false;
+{ const bag = new THREE.Mesh(sphG, new THREE.MeshPhysicalMaterial({ color: 0xcfeaff, roughness: 0.12, clearcoat: 1, transparent: true, opacity: 0.7, depthWrite: false }));
+  bag.scale.set(0.045, 0.012, 0.032); ice.add(bag);
+  const cubeMat = new THREE.MeshStandardMaterial({ color: 0xeef8ff, roughness: 0.2, transparent: true, opacity: 0.9 });
+  [[-0.02, 0, -0.01], [0.0, 0.002, 0.008], [0.018, -0.001, -0.006], [-0.006, 0.001, -0.016], [0.025, 0, 0.012]].forEach((q, i) => {
+    const c = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), cubeMat); c.position.set(q[0], q[1], q[2]); c.rotation.set(i, i * 0.7, i * 1.3); c.scale.setScalar(0.011); ice.add(c); }); }
+const MIST = 50, mistPos = new Float32Array(MIST * 3), mistGeo = new THREE.BufferGeometry();
+mistGeo.setAttribute('position', new THREE.BufferAttribute(mistPos, 3));
+const mist = new THREE.Points(mistGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.006, transparent: true, opacity: 0.35, depthWrite: false }));
+mist.frustumCulled = false; ice.add(mist);
+const mistP = Array.from({ length: MIST }, () => ({ x: (Math.random() - 0.5) * 0.08, y: Math.random() * 0.03, z: (Math.random() - 0.5) * 0.06, v: 0.005 + Math.random() * 0.01 }));
+function updateMist(dt){
+  mistP.forEach((m, k) => {
+    m.y += m.v * dt; m.x += Math.sin(FX.t + k) * 0.003 * dt;
+    if (m.y > 0.035){ m.y = 0.008; m.x = (Math.random() - 0.5) * 0.08; m.z = (Math.random() - 0.5) * 0.06; }
+    mistPos[k * 3] = m.x; mistPos[k * 3 + 1] = m.y; mistPos[k * 3 + 2] = m.z;
+  });
+  mistGeo.attributes.position.needsUpdate = true;
+}
+// 종이
+const paperTex = (() => {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 360; const x = c.getContext('2d');
+  x.fillStyle = '#f7f4ec'; x.fillRect(0, 0, 256, 360);
+  x.strokeStyle = 'rgba(90,130,200,0.35)'; x.lineWidth = 1.5; for (let y = 40; y < 360; y += 20){ x.beginPath(); x.moveTo(0, y); x.lineTo(256, y); x.stroke(); }
+  x.strokeStyle = 'rgba(220,80,80,0.4)'; x.beginPath(); x.moveTo(36, 0); x.lineTo(36, 360); x.stroke();
+  return new THREE.CanvasTexture(c);
+})();
+const PW = 0.075, PHH = 0.105, paperGeo = new THREE.PlaneGeometry(PW, PHH, 4, 10);
+{ const pa = paperGeo.attributes && paperGeo.attributes.position;
+  if (pa){ for (let i = 0; i < pa.count; i++){ const y = pa.getY(i) / (PHH / 2); pa.setZ(i, 0.01 * y * y); } paperGeo.computeVertexNormals(); } }
+const paper = new THREE.Mesh(paperGeo, new THREE.MeshStandardMaterial({ map: paperTex, side: THREE.DoubleSide, roughness: 0.92 }));
+paper.visible = false; scene.add(paper);
+const basisQ = (x, y, z) => new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+function updateStim(dt){
+  FX.t += dt; const k = STIM;
+  FX.wind += (k.w - FX.wind) * clamp(dt * 3);
+  fan.visible = k.w > 0 || FX.wind > 0.02;
+  if (FX.wd !== k.wd){ FX.wd = k.wd; placeFan(k.wd); stk.forEach(sk => { sk.init = false; }); }
+  if (!fan.visible) fanStand.visible = false; else fanStand.visible = FX.wd !== 'top';
+  rotor.rotation.z += FX.wind * 40 * dt;
+  const fp = FAN_POS[FX.wd] || FAN_POS.side, wdir = V().subVectors(TGT, fp).normalize();
+  updateStreaks(dt, fp, wdir);
+  let surf = null;
+  if (k.o === 'cold' || k.o === 'paper') surf = surface(clamp(k.s) * (L1 + L2), k.f);
+  const hov = k.c ? 0 : 0.012 + 0.07 * clamp(k.h);
+  ice.visible = k.o === 'cold' && !!surf; paper.visible = k.o === 'paper' && !!surf;
+  if (ice.visible){
+    const x = surf.t.clone(), y = surf.n.clone(), z = V().crossVectors(x, y).normalize(); x.crossVectors(y, z);
+    ice.quaternion.copy(basisQ(x, y, z)); ice.position.copy(surf.p).addScaledVector(surf.n, 0.011 + hov); updateMist(dt);
+  }
+  if (paper.visible){
+    const sd = k.sd || 1, y = surf.n.clone().multiplyScalar(0.75).addScaledVector(surf.t, -0.65 * sd).normalize();
+    const x = V().crossVectors(surf.n, surf.t).normalize(), z = V().crossVectors(x, y).normalize(); x.crossVectors(y, z);
+    paper.quaternion.copy(basisQ(x, y, z)); paper.position.copy(surf.p).addScaledVector(y, PHH / 2).addScaledVector(surf.n, 0.001 + hov);
+  }
+  const coldT = k.o === 'cold' && k.c ? 1 : 0;
+  FX.cold += (coldT - FX.cold) * clamp(dt / (coldT > FX.cold ? 1.2 : 4));
+  if (surf && k.o === 'cold') coldU.p.value.copy(surf.p);
+  coldU.k.value = FX.cold;
+  FX.goose += (clamp(FX.cold * 1.2 + Math.max(0, FX.wind - 0.45) * 1.5) - FX.goose) * clamp(dt / 1.5);
+  hairMesh.visible = viewMode === 'skin';
+  if (hairMesh.visible){
+    const windL = wdir.clone().transformDirection(armInv);
+    const pap = k.o === 'paper' && k.c && surf ? { p: surf.pl, dir: surf.tl.clone().multiplyScalar(k.sd || 1) } : null;
+    updateHairs(windL, pap);
+  }
+}
+
 /* ====================== 카메라 시점 ====================== */
 const VW = { view: 'third', yaw: 1.04, pitch: 0.1, dist: 0.8, fyaw: Math.PI + 0.245, fpitch: -0.75 };
 const T3 = V(0, 1.13, 0.10), HEAD = V(-0.19, 1.6, -0.02);
@@ -988,7 +1207,7 @@ $('pvBtn').onclick = () => {
 };
 function broadcast(){
   if (!conns.size) return;
-  const msg = { th: +A.th.toFixed(4), g: +A.g.toFixed(3), aF: +A.aF.toFixed(3), at: +A.at.toFixed(3), ff: +A.ff.toFixed(3), fe: +A.fe.toFixed(3), m: viewMode, ms: modeSeq, hs: hudSrc() };
+  const msg = { th: +A.th.toFixed(4), g: +A.g.toFixed(3), aF: +A.aF.toFixed(3), at: +A.at.toFixed(3), ff: +A.ff.toFixed(3), fe: +A.fe.toFixed(3), m: viewMode, ms: modeSeq, hs: hudSrc(), st: Object.assign({}, STIM) };
   conns.forEach(c => { try { if (c.open) c.send(msg); } catch (e) {} });
 }
 function join(){
@@ -1148,20 +1367,39 @@ function camTrack(){
       }
     }
   } else C.pts = null;
-  C.hpts = null;
+  C.hpts = null; C.opts = null;
   if (hr && hr.landmarks && hr.landmarks.length){
-    let best = 0;
-    if (C.pts && hr.landmarks.length > 1){
-      const wr = C.pts[2]; let bd = 1e9;
-      hr.landmarks.forEach((h, k) => { const dd = Math.hypot(h[0].x - wr.x, h[0].y - wr.y); if (dd < bd){ bd = dd; best = k; } });
-    }
+    // 피실험자 손 = 포즈의 손목에 가장 가까운 손, 실험자 손 = 나머지 손
+    let best = 0, other = -1;
+    if (C.pts){
+      const wr = C.pts[2], ds = hr.landmarks.map(h => Math.hypot(h[0].x - wr.x, h[0].y - wr.y));
+      best = ds.indexOf(Math.min(...ds)); if (ds[best] > 0.15) best = -1;
+      ds.forEach((d, k) => { if (k !== best && (other < 0 || d > ds[other])) other = k; });
+    } else if (hr.landmarks.length > 1) other = 1;
+    if (other >= 0) C.opts = hr.landmarks[other];
+    if (best >= 0){
     const hw = hr.worldLandmarks[best]; C.hpts = hr.landmarks[best];
     // 네 손가락마다 세 마디(뿌리·가운데·끝)의 굽힘각을 더한 값의 평균: 펴면 약 25°, 주먹이면 약 215°
     const curl = FING_IDS.map(f => angleAt(hw[f[0]], hw[f[1]], hw[f[2]]) + angleAt(hw[f[1]], hw[f[2]], hw[f[3]]) + angleAt(hw[f[2]], hw[f[3]], hw[f[4]]))
       .reduce((sum, x) => sum + x, 0) / 4;
     C.curl = euG.f(curl, dt);
     C.grip = clamp((C.curl - C.open) / ((C.fist - C.open) || 1));
+    }
   }
+  trackToucher();
+}
+// 실험자 손(엄지·검지 끝 가운데)이 피실험자 팔(어깨→팔꿈치→손목 선)의 어디에 얼마나 가까운지
+function trackToucher(){
+  if (!C.pts || !C.ok || !C.opts){ SM.camTouch = false; SM.camH = 1; SM.camSeen = false; return; }
+  const asp = C.video.videoWidth / (C.video.videoHeight || 1), P2 = p => ({ x: p.x * asp, y: p.y });
+  const [sh, el, wr] = C.pts.map(P2), q = P2({ x: (C.opts[4].x + C.opts[8].x) / 2, y: (C.opts[4].y + C.opts[8].y) / 2 });
+  const seg = (a, b) => { const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy || 1e-9, u = clamp(((q.x - a.x) * dx + (q.y - a.y) * dy) / l2);
+    return { u, d: Math.hypot(q.x - a.x - u * dx, q.y - a.y - u * dy) }; };
+  const s1 = seg(sh, el), s2 = seg(el, wr), fl = Math.hypot(wr.x - el.x, wr.y - el.y) || 0.1;
+  const r = s2.d <= s1.d ? { t: (L1 + s2.u * L2) / (L1 + L2), d: s2.d } : { t: s1.u * L1 / (L1 + L2), d: s1.d };
+  const dn = r.d / fl;
+  SM.camS = SM.camS == null ? r.t : SM.camS + (r.t - SM.camS) * 0.5;
+  SM.camTouch = dn < 0.35; SM.camH = clamp((dn - 0.2) / 0.8); SM.camSeen = true;
 }
 const cv = $('camView'), cvx = cv.getContext('2d');
 const HAND_LINKS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
@@ -1182,6 +1420,10 @@ function drawCam(){
   if (C.hpts){
     cvx.strokeStyle = '#f2b84b'; cvx.lineWidth = 1.5; cvx.beginPath();
     HAND_LINKS.forEach(([a, b]) => { cvx.moveTo(C.hpts[a].x * w, C.hpts[a].y * h); cvx.lineTo(C.hpts[b].x * w, C.hpts[b].y * h); }); cvx.stroke();
+  }
+  if (C.opts){
+    cvx.strokeStyle = SM.camTouch ? '#ff5a48' : '#c98bff'; cvx.lineWidth = 1.5; cvx.beginPath();
+    HAND_LINKS.forEach(([a, b]) => { cvx.moveTo(C.opts[a].x * w, C.opts[a].y * h); cvx.lineTo(C.opts[b].x * w, C.opts[b].y * h); }); cvx.stroke();
   }
   cvx.restore();
   if (C.angle != null || C.grip != null){
@@ -1387,6 +1629,119 @@ $('inArm').onclick = () => setInMode('arm');
 $('inEeg').onclick = () => setInMode('eeg');
 updChips();
 
+/* ====================== 크롬북: 자극 시점 맞추기 ====================== */
+const SM = { mode: store.get('bciStimMode', 'guide'), fan: false, pow: store.get('bciFanPow', 0.6), wd: store.get('bciFanDir', 'side'),
+  obj: 'none', face: store.get('bciFace', 'out'), touch: false, s: store.get('bciStimPos', 0.8), period: store.get('bciPeriod', 2.5),
+  delay: 0, beep: true, camS: null, camTouch: false, camH: 1, camSeen: false, sens: {}, sensT: 0, coldThr: 22,
+  buf: [], lastPh: 0, ac: null, prevS: null, sd: 1, gS: 0, gC: false };
+function beep(){
+  try { SM.ac = SM.ac || new (window.AudioContext || window.webkitAudioContext)();
+    const o = SM.ac.createOscillator(), g = SM.ac.createGain(); o.frequency.value = 880; g.gain.value = 0.08;
+    o.connect(g); g.connect(SM.ac.destination); o.start(); o.stop(SM.ac.currentTime + 0.08); } catch (e) {}
+}
+function stimRaw(){
+  const now = performance.now(), sf = now - SM.sensT < 2000 ? SM.sens : {};
+  let w = SM.fan ? SM.pow : 0, c = SM.touch, s = SM.s, h = SM.touch ? 0 : 0.5, sd = 0;
+  const o = SM.obj;
+  if (SM.mode === 'cam'){
+    if (E.mode === 'arm' && C.on && SM.camS != null && SM.camSeen){ s = SM.camS; c = SM.camTouch; h = SM.camH; }
+    else { c = false; h = 1; }
+  } else if (SM.mode === 'guide'){
+    // 종이: 팔꿈치 아래 → 손목으로 문지르고 들어서 돌아옴 / 차가운 물체: 같은 자리에 대었다 뗌
+    const per = SM.period, ph = ((now / 1000) % per) / per, on = o === 'paper' ? 0.75 : 0.6;
+    if (ph < SM.lastPh && SM.beep && o !== 'none') beep();
+    SM.lastPh = ph;
+    if (o === 'paper'){
+      const s0 = 0.66, s1 = 0.95;
+      if (ph < on){ s = s0 + (s1 - s0) * ph / on; c = true; h = 0; sd = 1; }
+      else { const u = (ph - on) / (1 - on); s = s1 + (s0 - s1) * u; c = false; h = Math.sin(Math.PI * u); sd = -1; }
+    } else { c = ph < on; h = c ? 0 : Math.sin(Math.PI * (ph - on) / (1 - on)); }
+    SM.gS = s; SM.gC = c;
+  }
+  if ('WIND' in sf) w = clamp(sf.WIND);
+  if ('TOUCH' in sf) c = sf.TOUCH > 0.5;
+  if ('POS' in sf) s = clamp(sf.POS);
+  if ('TEMP' in sf && o === 'cold') c = sf.TEMP < SM.coldThr;
+  if (!sd){ if (SM.prevS != null && Math.abs(s - SM.prevS) > 0.002) SM.sd = Math.sign(s - SM.prevS); sd = SM.sd; }
+  SM.prevS = s;
+  return { w: +w.toFixed(2), wd: SM.wd, o, c: c ? 1 : 0, s: +clamp(s).toFixed(3), sd, h: +clamp(h).toFixed(2), f: SM.face };
+}
+// 대조 실험: VR 표시를 일부러 늦춤
+function stimDelayed(st){
+  if (!SM.delay){ SM.buf.length = 0; return st; }
+  const now = performance.now(); SM.buf.push({ t: now, st });
+  const tgt = now - SM.delay * 1000; let out = SM.buf[0].st, k = 0;
+  while (k < SM.buf.length && SM.buf[k].t <= tgt){ out = SM.buf[k].st; k++; }
+  if (k > 1) SM.buf.splice(0, k - 1);
+  return out;
+}
+const SM_INFO = {
+  guide: '노란 점이 움직이는 동안 같은 속도로 종이를 팔꿈치 아래에서 손목 쪽으로 문지르세요. 차가운 물체는 점이 켜져 있는 동안 대고 있다가 꺼지면 떼세요. 소리가 시작 신호입니다.',
+  cam: '실험자가 물건을 든 손이 카메라에 보이면, 그 손이 피실험자 팔에 닿는 위치를 따라 VR 물체가 움직입니다. 입력 방식이 "팔·손 따라 하기"일 때만 동작합니다.',
+  man: '슬라이더로 닿는 위치를 정하고, 실제로 닿는 동안 버튼(또는 Space)을 누르고 있으세요.'
+};
+function setStimMode(m){
+  SM.mode = m; store.set('bciStimMode', m);
+  [['smGuide', 'guide'], ['smCam', 'cam'], ['smMan', 'man']].forEach(([id, k]) => $(id).setAttribute('aria-pressed', String(k === m)));
+  $('smInfo').textContent = SM_INFO[m]; $('guideBox').hidden = m !== 'guide'; $('guideOpts').hidden = m !== 'guide'; $('manStim').hidden = m !== 'man';
+}
+$('smGuide').onclick = () => setStimMode('guide'); $('smCam').onclick = () => setStimMode('cam'); $('smMan').onclick = () => setStimMode('man');
+const setFan = on => { SM.fan = on; $('fanBtn').setAttribute('aria-pressed', String(on)); };
+$('fanBtn').onclick = () => setFan(!SM.fan);
+const showPow = () => { $('fanPowO').textContent = Math.round(SM.pow * 100) + '%'; };
+$('fanPow').value = SM.pow; showPow();
+$('fanPow').oninput = e => { SM.pow = +e.target.value; store.set('bciFanPow', SM.pow); showPow(); };
+$('fanDir').value = SM.wd; $('fanDir').onchange = e => { SM.wd = e.target.value; store.set('bciFanDir', SM.wd); };
+const setObj = o => { SM.obj = o; [['objNone', 'none'], ['objCold', 'cold'], ['objPaper', 'paper']].forEach(([id, k]) => $(id).setAttribute('aria-pressed', String(k === o))); };
+$('objNone').onclick = () => setObj('none'); $('objCold').onclick = () => setObj('cold'); $('objPaper').onclick = () => setObj('paper');
+$('face').value = SM.face; $('face').onchange = e => { SM.face = e.target.value; store.set('bciFace', SM.face); };
+const showPos = () => { $('stimPosO').textContent = Math.round(SM.s * 100) + '%'; };
+$('stimPos').value = SM.s; showPos();
+$('stimPos').oninput = e => { SM.s = +e.target.value; store.set('bciStimPos', SM.s); showPos(); };
+const setTouch = on => { SM.touch = on; $('touchBtn').setAttribute('aria-pressed', String(on)); };
+$('touchBtn').addEventListener('pointerdown', e => { e.preventDefault(); setTouch(true); });
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => $('touchBtn').addEventListener(ev, () => setTouch(false)));
+const showPer = () => { $('periodO').textContent = SM.period.toFixed(1) + '초'; };
+$('period').value = SM.period; showPer();
+$('period').oninput = e => { SM.period = +e.target.value; store.set('bciPeriod', SM.period); showPer(); };
+$('beep').onchange = e => { SM.beep = e.target.checked; if (SM.beep) beep(); };
+[['dl0', 0], ['dl05', 0.5], ['dl1', 1]].forEach(([id, v]) => { $(id).onclick = () => { SM.delay = v; SM.buf.length = 0; ['dl0', 'dl05', 'dl1'].forEach(x => $(x).setAttribute('aria-pressed', String(x === id))); }; });
+window.addEventListener('keydown', e => {
+  if (role !== 'send' || /SELECT|TEXTAREA/.test(e.target.tagName) || (e.target.tagName === 'INPUT' && !/range|checkbox/.test(e.target.type))) return;
+  if (e.code === 'Space'){ e.preventDefault(); if (!e.repeat) setTouch(true); }
+  else if (e.key === 'w' || e.key === 'W') setFan(!SM.fan);
+  else if (e.key === '1') setObj('none'); else if (e.key === '2') setObj('cold'); else if (e.key === '3') setObj('paper');
+});
+window.addEventListener('keyup', e => { if (e.code === 'Space') setTouch(false); });
+$('serBtn').onclick = async () => {
+  if (!('serial' in navigator)){ $('serInfo').textContent = '이 브라우저는 센서 연결(Web Serial)을 지원하지 않습니다. 크롬북이나 PC의 Chrome에서 https 주소로 여세요.'; return; }
+  try {
+    const port = await navigator.serial.requestPort(); await port.open({ baudRate: 9600 });
+    const dec = new TextDecoderStream(); port.readable.pipeTo(dec.writable).catch(() => {});
+    const rd = dec.readable.getReader(); let buf = '';
+    $('serInfo').textContent = '센서 연결됨. 값을 기다리는 중…'; $('serBtn').setAttribute('aria-pressed', 'true');
+    for (;;){
+      const { value, done } = await rd.read(); if (done) break; buf += value; let i;
+      while ((i = buf.indexOf('\n')) >= 0){
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+        const m = line.match(/^(WIND|TEMP|TOUCH|POS)\s*[:=]\s*(-?[\d.]+)/i);
+        if (m){ SM.sens[m[1].toUpperCase()] = +m[2]; SM.sensT = performance.now(); }
+      }
+      $('serInfo').textContent = '센서: ' + Object.entries(SM.sens).map(([k, v]) => `${k} ${v}`).join(' · ');
+    }
+  } catch (e) { $('serInfo').textContent = '센서 연결이 취소되었거나 실패했습니다. 아두이노가 USB로 연결되어 있는지 확인하세요.'; $('serBtn').setAttribute('aria-pressed', 'false'); }
+};
+setStimMode(SM.mode); setObj('none');
+function updateStimUI(){
+  if (SM.mode === 'guide'){
+    const on = SM.obj !== 'none';
+    $('gDot').style.left = (SM.obj === 'paper' ? clamp((SM.gS - 0.66) / 0.29) : 0.5) * 100 + '%';
+    $('guide').classList.toggle('on', on && SM.gC);
+    $('gTxt').textContent = !on ? '팔에 대는 물건을 고르면 안내가 시작됩니다' : SM.gC ? (SM.obj === 'paper' ? '지금 문지르세요 →' : '지금 대고 있으세요') : '떼세요';
+  }
+  if (SM.mode === 'cam') $('smInfo').textContent = SM_INFO.cam + (E.mode !== 'arm' ? ' (지금은 EEG 입력이라 동작하지 않습니다)' : SM.camSeen ? ` · 실험자 손 인식됨 · ${SM.camTouch ? '닿음' : '떨어져 있음'}` : ' · 실험자 손이 아직 안 보입니다');
+}
+
 /* ====================== 크롬북 화면 숫자 ====================== */
 const musList = $('musList');
 MUS_UI.forEach(([k, n, e]) => {
@@ -1401,6 +1756,7 @@ function updateUI(){
   if (E.mode === 'eeg') updateEegUI();
   else if (C.on && C.pose && C.hands)
     camMsg(`추적 중 · 초당 ${Math.round(C.fps)}회 분석 · 팔 인식 ${C.ok ? '양호' : '불안정'} (신뢰도 ${C.conf.toFixed(2)}) · 손 ${C.hpts ? '인식됨' : '안 보임'}`);
+  updateStimUI();
   if (vrPreview) $('pvInfo').textContent = remoteFresh() ? '휴대폰을 쓴 사람의 시선과 렌즈 설정을 그대로 보여 주는 중입니다.' : '휴대폰이 연결되지 않아 기본 렌즈 값으로 보여 줍니다. 드래그로 둘러볼 수 있습니다.';
 }
 
@@ -1422,6 +1778,9 @@ applyMode('skin'); placeBoard(); setInMode(E.mode);
 if (location.hash === '#send' || location.hash === '#vr') startRole(location.hash.slice(1));
 let last = performance.now(), acc = 0, hudT = 0, uiT = 0, netT = 0, tt = 0, sendT = 0;
 function demoTargets(){ A.thT = (72 + 62 * Math.sin(tt * 0.7)) * DEG; A.gT = 0.5 + 0.5 * Math.sin(tt * 1.1); }
+// 연결 전 미리보기: 약한 바람 + 종이로 문지르기
+function demoStim(){ const per = 3, ph = (tt % per) / per, on = ph < 0.75;
+  Object.assign(STIM, { w: 0.35, wd: 'side', o: 'paper', c: on ? 1 : 0, s: on ? 0.66 + 0.29 * ph / 0.75 : 0.95 - 0.29 * (ph - 0.75) / 0.25, sd: on ? 1 : -1, h: on ? 0 : Math.sin(Math.PI * (ph - 0.75) / 0.25), f: 'out' }); }
 function simulate(dt){ acc += dt; while (acc >= 0.001){ physStep(0.001); acc -= 0.001; } }
 function frame(now){
   const dt = Math.min(0.05, (now - last) / 1000); last = now; tt += dt;
@@ -1431,7 +1790,8 @@ function frame(now){
       A.th += (rxData.th - A.th) * k; A.g += (rxData.g - A.g) * k;
       ['aF', 'at', 'ff', 'fe'].forEach(n => { A[n] += (rxData[n] - A[n]) * k; });
       if (rxData.ms !== lastMs){ lastMs = rxData.ms; if (rxData.m && rxData.m !== viewMode) applyMode(rxData.m); }
-    } else if ($('demo').checked){ demoTargets(); simulate(dt); }
+      if (rxData.st) Object.assign(STIM, rxData.st);
+    } else if ($('demo').checked){ demoTargets(); simulate(dt); demoStim(); }
   } else if (role === 'send'){
     if (E.mode === 'eeg'){
       eegTrack();
@@ -1443,9 +1803,10 @@ function frame(now){
       A.gT = C.on && C.grip != null ? C.grip : +$('manGr').value / 100;
     }
     simulate(dt);
+    Object.assign(STIM, stimDelayed(stimRaw()));
     netT += dt; if (netT > 0.033){ netT = 0; broadcast(); }
-  } else { demoTargets(); simulate(dt); }
-  setPose(); updateSkin();
+  } else { demoTargets(); simulate(dt); demoStim(); }
+  setPose(); updateSkin(); updateStim(dt);
   if (viewMode === 'muscle') updateMuscles();
   updateCamera();
   if (role === 'vr' && rxConn && rxConn.open){ sendT += dt; if (sendT > 0.066){ sendT = 0;
