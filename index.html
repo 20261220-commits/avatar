@@ -178,10 +178,15 @@ body:not(.role-vr) #vrset, body:not(.role-vr) #vrtip{display:none}
           </div>
         </section>
         <section class="blk">
+          <p class="label">두 화면을 하나로 합치기 (가장 중요)</p>
+          <div class="field"><div class="row"><label for="ipd">VR 기기 렌즈 사이 거리</label><output id="ipdo"></output></div><input type="range" id="ipd" min="50" max="75" step="0.5"></div>
+          <div class="field"><div class="row"><label for="scr">휴대폰 화면 가로 길이 (가로로 눕혔을 때)</label><output id="scro"></output></div><input type="range" id="scr" min="10" max="18" step="0.1"></div>
+          <div class="field"><div class="row"><label for="depth">입체감 세기</label><output id="deptho"></output></div><input type="range" id="depth" min="0" max="1" step="0.05"></div>
+          <label class="check"><input type="checkbox" id="guide"> 정렬 십자 표시 (두 십자가 하나로 겹치게 맞추기)</label>
+          <p class="note">두 개로 보이면 렌즈 사이 거리와 화면 가로 길이를 자로 재서 맞추세요. 그래도 겹치지 않으면 렌즈 사이 거리를 조금씩 바꿔 보고, 입체감을 낮추면 더 쉽게 합쳐집니다. 헤드셋을 쓴 채로는 크롬북 화면에서 원격으로 조절할 수 있습니다.</p>
           <p class="label">렌즈 보정 (VR 기기에 맞게)</p>
           <div class="field"><div class="row"><label for="k1">왜곡 세기 1</label><output id="k1o"></output></div><input type="range" id="k1" min="0" max="0.6" step="0.01"></div>
           <div class="field"><div class="row"><label for="k2">왜곡 세기 2</label><output id="k2o"></output></div><input type="range" id="k2" min="0" max="0.4" step="0.01"></div>
-          <div class="field"><div class="row"><label for="sep">렌즈 중심 간격</label><output id="sepo"></output></div><input type="range" id="sep" min="-0.15" max="0.15" step="0.005"></div>
           <div class="field"><div class="row"><label for="zoom">화면 크기</label><output id="zoomo"></output></div><input type="range" id="zoom" min="0.6" max="1.6" step="0.01"></div>
           <div class="field"><div class="row"><label for="fov">시야각</label><output id="fovo"></output></div><input type="range" id="fov" min="60" max="110" step="1"></div>
           <div class="field"><div class="row"><label for="ca">색 번짐 보정</label><output id="cao"></output></div><input type="range" id="ca" min="0" max="0.03" step="0.001"></div>
@@ -280,6 +285,18 @@ body:not(.role-vr) #vrset, body:not(.role-vr) #vrtip{display:none}
       <p class="label">보기 (휴대폰 화면도 같이 바뀜)</p>
       <button class="btn" id="pvBtn" type="button" aria-pressed="false">휴대폰 VR 화면 미리보기</button>
       <p class="note" id="pvInfo">크롬북 화면을 휴대폰 VR과 같은 양안 분할·렌즈 왜곡 화면으로 바꿉니다. 휴대폰이 연결되어 있으면 휴대폰을 쓴 사람이 보는 방향과 렌즈 설정을 그대로 따라갑니다.</p>
+      <details id="rlBox">
+        <summary>휴대폰 VR 원격 맞추기 · 두 개로 보일 때</summary>
+        <div class="blk" style="margin-top:10px">
+          <p class="note" id="rlInfo">휴대폰을 연결하면 헤드셋을 쓴 채로 크롬북에서 휴대폰 화면을 조절할 수 있습니다. 쓴 사람이 "하나로 보인다"고 할 때까지 맞추세요.</p>
+          <label class="check"><input type="checkbox" id="r_guide"> 정렬 십자 표시</label>
+          <div class="field"><div class="row"><label for="r_ipd">렌즈 사이 거리</label><output id="r_ipdo"></output></div><input type="range" id="r_ipd" min="50" max="75" step="0.5"></div>
+          <div class="field"><div class="row"><label for="r_scr">휴대폰 화면 가로 길이</label><output id="r_scro"></output></div><input type="range" id="r_scr" min="10" max="18" step="0.1"></div>
+          <div class="field"><div class="row"><label for="r_depth">입체감 세기</label><output id="r_deptho"></output></div><input type="range" id="r_depth" min="0" max="1" step="0.05"></div>
+          <div class="field"><div class="row"><label for="r_zoom">화면 크기</label><output id="r_zoomo"></output></div><input type="range" id="r_zoom" min="0.6" max="1.6" step="0.01"></div>
+          <div class="field"><div class="row"><label for="r_k1">왜곡 세기</label><output id="r_k1o"></output></div><input type="range" id="r_k1" min="0" max="0.6" step="0.01"></div>
+        </div>
+      </details>
       <div class="seg" role="group" aria-label="보기 모드">
         <button type="button" class="modeBtn" data-mode="skin" aria-pressed="true">피부</button>
         <button type="button" class="modeBtn" data-mode="muscle" aria-pressed="false">근육·뼈</button>
@@ -1182,16 +1199,24 @@ function resize(){
   const dpr = renderer.getPixelRatio(); renderer.setSize(W_, H_, false);
   rt.setSize(Math.round(W_ / 2 * dpr * 1.25), Math.round(H_ * dpr * 1.25));
 }
-const LENS_DEF = { k1: 0.22, k2: 0.10, sep: 0, zoom: 1.0, fov: 88, ca: 0.008 };
-const lens = Object.assign({}, LENS_DEF, store.get('bciLens', {}));
+// 렌즈 사이 거리(mm)와 휴대폰 화면 가로 길이(cm)로 두 그림의 중심을 렌즈 중심에 맞춤
+const estScr = clamp(Math.round(Math.max(screen.width || 0, screen.height || 0) * 0.175) / 10, 10, 18) || 14.5;
+const LENS_DEF = { ipd: 63, scr: estScr, depth: 1, k1: 0.22, k2: 0.10, zoom: 1.0, fov: 88, ca: 0.008, guide: false };
+const LENS_NUM = ['ipd', 'scr', 'depth', 'k1', 'k2', 'zoom', 'fov', 'ca'];
+const lens = Object.assign({}, LENS_DEF, store.get('bciLens2', {}));
+const sepOf = L => clamp(0.5 - (L.ipd || 63) / ((L.scr || 14.5) * 10), -0.25, 0.25);
 const distMat = new THREE.ShaderMaterial({
-  uniforms: { tex: { value: rt.texture }, center: { value: new THREE.Vector2(0.5, 0.5) }, k1: { value: 0 }, k2: { value: 0 }, zoom: { value: 1 }, ca: { value: 0 }, aspect: { value: 1 } },
+  uniforms: { tex: { value: rt.texture }, center: { value: new THREE.Vector2(0.5, 0.5) }, k1: { value: 0 }, k2: { value: 0 }, zoom: { value: 1 }, ca: { value: 0 }, aspect: { value: 1 }, guide: { value: 0 } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
-  fragmentShader: `uniform sampler2D tex; uniform vec2 center; uniform float k1, k2, zoom, ca, aspect; varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tex; uniform vec2 center; uniform float k1, k2, zoom, ca, aspect, guide; varying vec2 vUv;
     vec2 warp(vec2 uv, float s){ vec2 p = (uv - center) * vec2(aspect, 1.0); float r2 = dot(p, p);
       vec2 d = p * (1.0 + k1 * r2 + k2 * r2 * r2) * s / zoom; return d / vec2(aspect, 1.0) + 0.5; }
     bool outside(vec2 u){ return u.x < 0.0 || u.y < 0.0 || u.x > 1.0 || u.y > 1.0; }
-    void main(){ vec2 ug = warp(vUv, 1.0); if (outside(ug)) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
+    void main(){
+      vec2 dd = abs(vUv - center) * vec2(aspect, 1.0);
+      bool cross = guide > 0.5 && ((dd.x < 0.004 && dd.y < 0.14) || (dd.y < 0.004 && dd.x < 0.14) || abs(length(dd) - 0.07) < 0.003);
+      if (cross) { gl_FragColor = vec4(0.25, 1.0, 0.55, 1.0); return; }
+      vec2 ug = warp(vUv, 1.0); if (outside(ug)) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
       vec2 ur = warp(vUv, 1.0 + ca), ub = warp(vUv, 1.0 - ca);
       gl_FragColor = vec4(texture2D(tex, ur).r, texture2D(tex, ug).g, texture2D(tex, ub).b, 1.0); }`,
   depthTest: false, depthWrite: false
@@ -1212,13 +1237,15 @@ function render(){
   const hw = W_ / 2, u = distMat.uniforms;
   const Ls = !vrActive && remoteFresh() && remoteV.lens ? remoteV.lens : lens;
   u.k1.value = Ls.k1; u.k2.value = Ls.k2; u.zoom.value = Ls.zoom; u.ca.value = Ls.ca; u.aspect.value = hw / H_;
+  u.guide.value = Ls.guide ? 1 : 0;
+  const sep = sepOf(Ls), eyeHalf = 0.032 * (Ls.depth == null ? 1 : Ls.depth);
   for (let i = 0; i < 2; i++){
-    eye.position.copy(camera.position).addScaledVector(rightV, (i ? 1 : -1) * 0.032);   // 눈 사이 거리 64 mm
+    eye.position.copy(camera.position).addScaledVector(rightV, (i ? 1 : -1) * eyeHalf);   // 가상 눈 사이 거리 64 mm × 입체감
     eye.quaternion.copy(camera.quaternion);
     eye.aspect = hw / H_; eye.fov = Ls.fov; eye.updateProjectionMatrix();
     renderer.setRenderTarget(rt); renderer.setScissorTest(false); renderer.render(scene, eye);
     renderer.setRenderTarget(null);
-    u.center.value.set(0.5 + (i ? -1 : 1) * Ls.sep, 0.5);
+    u.center.value.set(0.5 + (i ? -1 : 1) * sep, 0.5);
     renderer.setScissorTest(true); renderer.setViewport(i * hw, 0, hw, H_); renderer.setScissor(i * hw, 0, hw, H_);
     renderer.render(quadScene, quadCam);
   }
@@ -1277,6 +1304,23 @@ function openSenderPeer(code){
   peer.on('disconnected', () => { try { peer.reconnect(); } catch (e) {} });
 }
 $('newCode').onclick = () => openSenderPeer(newCode());
+const RL_KEYS = ['ipd', 'scr', 'depth', 'zoom', 'k1'], rl = {}; let rlEdit = 0;
+const rlFmt = { ipd: v => v + ' mm', scr: v => (+v).toFixed(1) + ' cm', depth: v => Math.round(v * 100) + '%', zoom: v => (+v).toFixed(2) + '×', k1: v => (+v).toFixed(2) };
+function sendLens(){
+  if (!conns.size){ $('rlInfo').textContent = '휴대폰이 연결되어 있지 않습니다. 휴대폰에서 코드를 입력해 연결하세요.'; return; }
+  const msg = { t: 'lens', lens: Object.assign({}, rl, { guide: $('r_guide').checked }) };
+  conns.forEach(c => { try { if (c.open) c.send(msg); } catch (e) {} });
+  $('rlInfo').textContent = '휴대폰에 보냈습니다. 헤드셋을 쓴 사람에게 하나로 보이는지 물어보세요.';
+}
+RL_KEYS.forEach(k => $('r_' + k).addEventListener('input', e => { rl[k] = +e.target.value; $('r_' + k + 'o').textContent = rlFmt[k](rl[k]); rlEdit = performance.now(); sendLens(); }));
+$('r_guide').onchange = () => { rlEdit = performance.now(); sendLens(); };
+// 휴대폰이 보내는 현재 값으로 슬라이더를 맞춤 (크롬북에서 조절 중일 때는 덮어쓰지 않음)
+function syncRemoteLensUI(){
+  if (!remoteFresh() || !remoteV.lens || performance.now() - rlEdit < 2000) return;
+  RL_KEYS.forEach(k => { const v = remoteV.lens[k]; if (typeof v === 'number'){ rl[k] = v; $('r_' + k).value = v; $('r_' + k + 'o').textContent = rlFmt[k](v); } });
+  $('r_guide').checked = !!remoteV.lens.guide;
+}
+RL_KEYS.forEach(k => { rl[k] = LENS_DEF[k]; $('r_' + k).value = rl[k]; $('r_' + k + 'o').textContent = rlFmt[k](rl[k]); });
 $('pvBtn').onclick = () => {
   vrPreview = !vrPreview; look.y = 0; look.p = 0;
   $('pvBtn').setAttribute('aria-pressed', String(vrPreview));
@@ -1299,7 +1343,10 @@ function join(){
   peer.on('open', () => {
     const c = peer.connect(NET_PREFIX + code, { serialization: 'json' }); rxConn = c;
     c.on('open', () => setNet('net2', 'ok', `크롬북 ${code}에 연결됨`));
-    c.on('data', d => { if (d && typeof d.th === 'number'){ rxData = d; lastRx = performance.now(); } });
+    c.on('data', d => {
+      if (d && typeof d.th === 'number'){ rxData = d; lastRx = performance.now(); }
+      else if (d && d.t === 'lens' && d.lens) applyRemoteLens(d.lens);
+    });
     c.on('close', () => setNet('net2', 'err', '연결이 끊겼습니다. 연결을 다시 눌러 주세요'));
   });
   peer.on('error', err => setNet('net2', 'err', err && err.type === 'peer-unavailable' ? '그 코드의 크롬북을 찾지 못했습니다. 코드를 확인하세요' : '연결 오류(' + (err && err.type ? err.type : '알 수 없음') + ')'));
@@ -1309,12 +1356,20 @@ $('codeIn').addEventListener('keydown', e => { if (e.key === 'Enter') join(); })
 
 /* ====================== 휴대폰: 렌즈 설정과 VR 시작 ====================== */
 function showLens(){
+  $('ipdo').textContent = lens.ipd + ' mm'; $('scro').textContent = lens.scr.toFixed(1) + ' cm'; $('deptho').textContent = Math.round(lens.depth * 100) + '%';
   $('k1o').textContent = lens.k1.toFixed(2); $('k2o').textContent = lens.k2.toFixed(2);
-  $('sepo').textContent = lens.sep.toFixed(3); $('zoomo').textContent = lens.zoom.toFixed(2) + '×';
-  $('fovo').textContent = lens.fov + '°'; $('cao').textContent = lens.ca.toFixed(3);
+  $('zoomo').textContent = lens.zoom.toFixed(2) + '×'; $('fovo').textContent = lens.fov + '°'; $('cao').textContent = lens.ca.toFixed(3);
 }
-Object.keys(LENS_DEF).forEach(k => $(k).addEventListener('input', e => { lens[k] = +e.target.value; showLens(); store.set('bciLens', lens); }));
-$('lensReset').onclick = () => { Object.assign(lens, LENS_DEF); Object.keys(LENS_DEF).forEach(k => { $(k).value = lens[k]; }); showLens(); store.set('bciLens', lens); };
+function syncLensUI(){ LENS_NUM.forEach(k => { $(k).value = lens[k]; }); $('guide').checked = !!lens.guide; showLens(); }
+LENS_NUM.forEach(k => $(k).addEventListener('input', e => { lens[k] = +e.target.value; showLens(); store.set('bciLens2', lens); }));
+$('guide').onchange = e => { lens.guide = e.target.checked; store.set('bciLens2', lens); };
+$('lensReset').onclick = () => { Object.assign(lens, LENS_DEF); syncLensUI(); store.set('bciLens2', lens); };
+// 크롬북이 보낸 렌즈 값 적용 (헤드셋을 쓴 채로 원격 조정)
+function applyRemoteLens(L){
+  LENS_NUM.forEach(k => { if (typeof L[k] === 'number' && isFinite(L[k])) lens[k] = L[k]; });
+  if (typeof L.guide === 'boolean') lens.guide = L.guide;
+  store.set('bciLens2', lens); syncLensUI();
+}
 $('vrStart').onclick = async () => {
   try { if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission(); } catch (e) {}
   try { await document.documentElement.requestFullscreen(); } catch (e) {}
@@ -1833,7 +1888,7 @@ function updateUI(){
   if (E.mode === 'eeg') updateEegUI();
   else if (C.on && C.pose && C.hands)
     camMsg(`추적 중 · 초당 ${Math.round(C.fps)}회 분석 · 팔 인식 ${C.ok ? '양호' : '불안정'} (신뢰도 ${C.conf.toFixed(2)}) · 손 ${C.hpts ? '인식됨' : '안 보임'}`);
-  updateStimUI();
+  updateStimUI(); syncRemoteLensUI();
   if (vrPreview) $('pvInfo').textContent = remoteFresh() ? '휴대폰을 쓴 사람의 시선과 렌즈 설정을 그대로 보여 주는 중입니다.' : '휴대폰이 연결되지 않아 기본 렌즈 값으로 보여 줍니다. 드래그로 둘러볼 수 있습니다.';
 }
 
@@ -1845,7 +1900,7 @@ function startRole(r){
   try { if (location.hash !== '#' + r) history.replaceState(null, '', '#' + r); } catch (e) {}
   setTimeout(resize, 50);
   if (r === 'send') openSenderPeer(String(store.get('bciRoom', newCode())));
-  else { $('codeIn').value = store.get('bciJoin', ''); Object.keys(LENS_DEF).forEach(k => { $(k).value = lens[k]; }); showLens(); }
+  else { $('codeIn').value = store.get('bciJoin', ''); syncLensUI(); }
 }
 $('pickSend').onclick = () => startRole('send');
 $('pickVr').onclick = () => startRole('vr');
