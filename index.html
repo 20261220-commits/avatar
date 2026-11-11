@@ -484,14 +484,26 @@ function fiberTex(){
 const skinMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.62, roughnessMap: skinRoughTex(), metalness: 0,
   clearcoat: 0.22, clearcoatRoughness: 0.42, normalMap: skinNormalTex(), normalScale: new THREE.Vector2(0.45, 0.45), emissive: 0x160603 });
 // 피하 산란 근사: 빛이 피부 속을 지나 가장자리가 붉게 비치는 효과
-const coldU = { p: { value: V(0, -10, 0) }, k: { value: 0 }, r: { value: 0.055 } };
+const coldU = { p: { value: V(0, -10, 0) }, k: { value: 0 }, r: { value: 0.055 },
+  w: { value: 0 }, wd: { value: V(1, 0, 0) }, t: { value: 0 }, g: { value: 0 } };
 skinMat.onBeforeCompile = sh => {
   // 차가운 물체가 닿은 자리: 핏기가 빠진 듯 창백하고 푸르스름하게
   sh.uniforms.uColdP = coldU.p; sh.uniforms.uCold = coldU.k; sh.uniforms.uColdR = coldU.r;
+  sh.uniforms.uWind = coldU.w; sh.uniforms.uWDir = coldU.wd; sh.uniforms.uTime = coldU.t; sh.uniforms.uGoose = coldU.g;
   sh.vertexShader = 'varying vec3 vWP;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  vWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
-  sh.fragmentShader = 'uniform vec3 uColdP; uniform float uCold; uniform float uColdR; varying vec3 vWP;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+  sh.fragmentShader = 'uniform vec3 uColdP; uniform float uCold; uniform float uColdR; uniform float uWind; uniform vec3 uWDir; uniform float uTime; uniform float uGoose; varying vec3 vWP;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
     { float kc = uCold * (1.0 - smoothstep(uColdR * 0.35, uColdR, distance(vWP, uColdP)));
-      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.8, 0.87, 1.0) + vec3(0.05, 0.06, 0.09), kc); }`);
+      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.8, 0.87, 1.0) + vec3(0.05, 0.06, 0.09), kc); }
+    // 바람결: 바람 방향으로 흘러가는 옅은 서늘한 물결이 피부 위를 지나감
+    { float ph = dot(vWP, uWDir) * 160.0 - uTime * (5.0 + 9.0 * uWind) + sin(dot(vWP, vec3(41.0, 67.0, 23.0))) * 2.0;
+      float band = smoothstep(0.82, 1.0, sin(ph));
+      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.95, 0.97, 1.0), 0.25 * uWind);
+      diffuseColor.rgb += vec3(0.045, 0.05, 0.06) * band * uWind; }`);
+  // 닭살: 피부 표면이 오돌토돌해짐 (차가움·센 바람)
+  sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+    { vec3 q = vWP * 1150.0;
+      vec3 g = vec3(sin(q.x) * cos(q.y * 1.31), sin(q.y + 1.7) * cos(q.z * 1.13), sin(q.z + 2.3) * cos(q.x * 0.87));
+      normal = normalize(normal + uGoose * 0.32 * g); }`);
   sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
     { float ndv = clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0);
       float rim = pow(1.0 - ndv, 2.2);
@@ -896,41 +908,11 @@ function surface(su, face){
   const b = (i * S1 + bj) * 3, b2 = ((i + 1) * S1 + bj) * 3;
   const pl = V(pos[b], pos[b + 1], pos[b + 2]), nl = V(nor[b], nor[b + 1], nor[b + 2]).normalize();
   const tl = V(pos[b2] - pos[b], pos[b2 + 1] - pos[b + 1], pos[b2 + 2] - pos[b + 2]).normalize();
+  let cx = 0, cy = 0, cz = 0;
+  for (let j = 0; j < S1 - 1; j++){ const q = (i * S1 + j) * 3; cx += pos[q]; cy += pos[q + 1]; cz += pos[q + 2]; }
+  const rad = pl.distanceTo(V(cx / (S1 - 1), cy / (S1 - 1), cz / (S1 - 1)));
   const M = armRoot.matrixWorld;
-  return { pl, nl, tl, p: pl.clone().applyMatrix4(M), n: nl.clone().transformDirection(M), t: tl.clone().transformDirection(M) };
-}
-// 팔 털: 바람에 흔들리고, 차가우면 서고(닭살), 종이가 지나가면 그 방향으로 눕음
-const HAIR_N = 1000, hairs = [];
-for (let k = 0; k < HAIR_N; k++){
-  let su, j, tries = 0;
-  do {
-    su = Math.random() < 0.65 ? L1 + 0.01 + Math.random() * (L2 - 0.02) : 0.02 + Math.random() * (L1 - 0.03);
-    j = Math.random() * armSkin.S | 0; const ph = j / armSkin.S * Math.PI * 2;
-    if (Math.random() < 0.25 + 0.75 * clamp(-Math.cos(ph) * 0.6 - Math.sin(ph) * 0.6 + 0.3)) break;
-  } while (++tries < 8);
-  hairs.push({ i: clamp(Math.round((su + ARM_TOP) / ARM_LEN * (armSkin.R - 1)), 0, armSkin.R - 2), j,
-    len: (su > L1 ? 0.0035 : 0.0025) + Math.random() * 0.003, seed: Math.random() * 6.283 });
-}
-const hairPos = new Float32Array(HAIR_N * 6), hairGeo = new THREE.BufferGeometry();
-hairGeo.setAttribute('position', new THREE.BufferAttribute(hairPos, 3));
-const hairMesh = new THREE.LineSegments(hairGeo, new THREE.LineBasicMaterial({ color: 0x3b2619, transparent: true, opacity: 0.5, depthWrite: false }));
-hairMesh.frustumCulled = false; armRoot.add(hairMesh);
-function updateHairs(windL, paper){
-  const S1 = armSkin.S + 1, pos = armSkin.pos, nor = armSkin.geo.attributes.normal.array, g = FX.goose;
-  const n = V(), tg = V(), d = V(), p = V();
-  for (let k = 0; k < HAIR_N; k++){
-    const h = hairs[k], b = (h.i * S1 + h.j) * 3, b2 = ((h.i + 1) * S1 + h.j) * 3;
-    p.set(pos[b], pos[b + 1], pos[b + 2]); n.set(nor[b], nor[b + 1], nor[b + 2]).normalize();
-    tg.set(pos[b2] - pos[b], pos[b2 + 1] - pos[b + 1], pos[b2 + 2] - pos[b + 2]).normalize();
-    d.copy(tg).multiplyScalar(0.95).addScaledVector(n, 0.22 + g * 0.8);
-    if (FX.wind > 0.01) d.addScaledVector(windL, FX.wind * 1.3 * (0.55 + 0.45 * Math.sin(FX.t * (9 + h.seed) + h.seed * 3)));
-    if (paper && p.distanceTo(paper.p) < 0.022) d.copy(paper.dir).addScaledVector(n, 0.05);
-    d.normalize(); const dn = d.dot(n); if (dn < 0.05) d.addScaledVector(n, 0.05 - dn).normalize();
-    const o = k * 6, bx = p.x + n.x * 0.0002, by = p.y + n.y * 0.0002, bz = p.z + n.z * 0.0002;
-    hairPos[o] = bx; hairPos[o + 1] = by; hairPos[o + 2] = bz;
-    hairPos[o + 3] = bx + d.x * h.len; hairPos[o + 4] = by + d.y * h.len; hairPos[o + 5] = bz + d.z * h.len;
-  }
-  hairGeo.attributes.position.needsUpdate = true;
+  return { pl, nl, tl, rad, p: pl.clone().applyMatrix4(M), n: nl.clone().transformDirection(M), t: tl.clone().transformDirection(M) };
 }
 // 선풍기
 const TGT = V(0, 1.05, 0.12), FAN_POS = { side: V(0.62, 1.05, -0.25), front: V(0.02, 1.0, 0.85), top: V(0.05, 1.85, 0.12) };
@@ -949,28 +931,65 @@ function placeFan(wd){
   fanStand.visible = wd !== 'top'; fanStand.position.set(fp.x, fp.y / 2 - 0.05, fp.z); fanStand.scale.set(0.012, fp.y - 0.1, 0.012);
 }
 fan.visible = false; fanStand.visible = false;
-// 바람 줄기
+// 바람 줄기와 공기 중 먼지: 팔에 부딪히면 팔을 감싸 돌아 흘러가고 뒤쪽에서 소용돌이침
 const STK = 150, stkPos = new Float32Array(STK * 6), stkGeo = new THREE.BufferGeometry();
 stkGeo.setAttribute('position', new THREE.BufferAttribute(stkPos, 3));
 const stkMat = new THREE.LineBasicMaterial({ color: 0xe8f4ff, transparent: true, opacity: 0, depthWrite: false });
 const stkMesh = new THREE.LineSegments(stkGeo, stkMat); stkMesh.frustumCulled = false; scene.add(stkMesh);
-const stk = Array.from({ length: STK }, () => ({ p: V(), init: false }));
+const MOTE = 160, motePos = new Float32Array(MOTE * 3), moteGeo = new THREE.BufferGeometry();
+moteGeo.setAttribute('position', new THREE.BufferAttribute(motePos, 3));
+const moteMat = new THREE.PointsMaterial({ color: 0xf5efe2, size: 0.0028, transparent: true, opacity: 0, depthWrite: false });
+const moteMesh = new THREE.Points(moteGeo, moteMat); moteMesh.frustumCulled = false; scene.add(moteMesh);
+const stk = Array.from({ length: STK + MOTE }, (_, k) => ({ p: V(), v: V(), init: false, seed: Math.random() * 6.283, mote: k >= STK }));
 function respawn(sk, fp, dir, along){
   const u = V().crossVectors(dir, Math.abs(dir.y) > 0.9 ? V(1, 0, 0) : V(0, 1, 0)).normalize(), v = V().crossVectors(dir, u);
   const r = Math.sqrt(Math.random()) * 0.18, a = Math.random() * 6.283;
   sk.p.copy(fp).addScaledVector(u, Math.cos(a) * r).addScaledVector(v, Math.sin(a) * r).addScaledVector(dir, 0.05 + along * Math.random());
 }
+const AX = [[V(), V(), 0.05], [V(), V(), 0.042], [V(), V(), 0.03]];
+function armAxis(){
+  AX[0][0].set(0, 0, 0).applyMatrix4(armRoot.matrixWorld); AX[0][1].set(0, 0, 0).applyMatrix4(foreG.matrixWorld);
+  AX[1][0].copy(AX[0][1]); AX[1][1].set(0, 0, 0).applyMatrix4(handG.matrixWorld);
+  AX[2][0].copy(AX[1][1]); AX[2][1].set(0, -0.1, 0).applyMatrix4(handG.matrixWorld);
+}
+const _c = V(), _r = V(), _sd = V();
+function flow(sk, dir, sp, dt){
+  sk.v.copy(dir).multiplyScalar(sp);
+  for (const [a, b, R] of AX){
+    _sd.subVectors(b, a); const L2 = _sd.dot(_sd) || 1e-9, u = clamp(_r.subVectors(sk.p, a).dot(_sd) / L2);
+    _c.copy(a).addScaledVector(_sd, u); _r.subVectors(sk.p, _c); const d = _r.length();
+    if (d > R * 2.2) continue;
+    const ahead = _r.dot(dir);
+    _r.addScaledVector(dir, -ahead); let l = _r.length();
+    if (l < 1e-5){ _r.crossVectors(dir, _sd); l = _r.length() || 1; }
+    _r.multiplyScalar(1 / l);
+    const push = clamp((R * 2.2 - d) / (R * 1.2));
+    sk.v.addScaledVector(_r, sp * 1.6 * push * push);
+    if (ahead > 0){ const sw = Math.sin(FX.t * 7 + sk.seed * 5) * sp * 0.7 * push; sk.v.y += sw; sk.v.addScaledVector(_r, Math.cos(FX.t * 6 + sk.seed) * sp * 0.4 * push); }
+  }
+  if (sk.mote){ sk.v.x += Math.sin(FX.t * 2.3 + sk.seed) * 0.08; sk.v.y += Math.cos(FX.t * 1.7 + sk.seed * 2) * 0.08; }
+  sk.p.addScaledVector(sk.v, dt);
+  for (const [a, b, R] of AX){
+    _sd.subVectors(b, a); const u = clamp(_r.subVectors(sk.p, a).dot(_sd) / (_sd.dot(_sd) || 1e-9));
+    _c.copy(a).addScaledVector(_sd, u); _r.subVectors(sk.p, _c); const d = _r.length();
+    if (d < R && d > 1e-6) sk.p.copy(_c).addScaledVector(_r, R / d);
+  }
+}
 function updateStreaks(dt, fp, dir){
-  stkMat.opacity = 0.3 * FX.wind; stkMesh.visible = FX.wind > 0.01; if (!stkMesh.visible) return;
-  const sp = 0.8 + 2.4 * FX.wind, ln = 0.02 + 0.07 * FX.wind, dist = fp.distanceTo(TGT) + 0.5, rel = V();
+  const on = FX.wind > 0.01; stkMesh.visible = on; moteMesh.visible = on;
+  stkMat.opacity = 0.3 * FX.wind; moteMat.opacity = 0.6 * FX.wind; if (!on) return;
+  armAxis();
+  const sp = 0.8 + 2.4 * FX.wind, ln = 0.02 + 0.07 * FX.wind, dist = fp.distanceTo(TGT) + 0.5, rel = V(), vn = V();
   stk.forEach((sk, k) => {
     if (!sk.init){ respawn(sk, fp, dir, dist); sk.init = true; }
-    sk.p.addScaledVector(dir, sp * dt); sk.p.y += Math.sin(FX.t * 3 + k) * 0.02 * dt;
-    if (rel.subVectors(sk.p, fp).dot(dir) > dist) respawn(sk, fp, dir, 0.1);
-    const o = k * 6; stkPos[o] = sk.p.x; stkPos[o + 1] = sk.p.y; stkPos[o + 2] = sk.p.z;
-    stkPos[o + 3] = sk.p.x - dir.x * ln; stkPos[o + 4] = sk.p.y - dir.y * ln; stkPos[o + 5] = sk.p.z - dir.z * ln;
+    flow(sk, dir, sk.mote ? sp * 0.6 : sp, dt);
+    if (rel.subVectors(sk.p, fp).dot(dir) > dist || rel.length() > dist + 0.4) respawn(sk, fp, dir, 0.1);
+    if (sk.mote){ const o = (k - STK) * 3; motePos[o] = sk.p.x; motePos[o + 1] = sk.p.y; motePos[o + 2] = sk.p.z; return; }
+    vn.copy(sk.v).normalize(); const o = k * 6;
+    stkPos[o] = sk.p.x; stkPos[o + 1] = sk.p.y; stkPos[o + 2] = sk.p.z;
+    stkPos[o + 3] = sk.p.x - vn.x * ln; stkPos[o + 4] = sk.p.y - vn.y * ln; stkPos[o + 5] = sk.p.z - vn.z * ln;
   });
-  stkGeo.attributes.position.needsUpdate = true;
+  stkGeo.attributes.position.needsUpdate = true; moteGeo.attributes.position.needsUpdate = true;
 }
 // 차가운 물체 (얼음주머니) + 찬 김
 const ice = new THREE.Group(); scene.add(ice); ice.visible = false;
@@ -1000,11 +1019,25 @@ const paperTex = (() => {
   x.strokeStyle = 'rgba(220,80,80,0.4)'; x.beginPath(); x.moveTo(36, 0); x.lineTo(36, 360); x.stroke();
   return new THREE.CanvasTexture(c);
 })();
-const PW = 0.075, PHH = 0.105, paperGeo = new THREE.PlaneGeometry(PW, PHH, 4, 10);
-{ const pa = paperGeo.attributes && paperGeo.attributes.position;
-  if (pa){ for (let i = 0; i < pa.count; i++){ const y = pa.getY(i) / (PHH / 2); pa.setZ(i, 0.01 * y * y); } paperGeo.computeVertexNormals(); } }
+// 종이 크기: 팔을 가로지르는 폭 7.5 cm × 팔 길이 방향 10.5 cm, 팔 둘레를 따라 휘어 면 전체가 피부에 붙음
+const PW = 0.075, PL = 0.105, PNX = 10, PNZ = 14;
+const paperGeo = new THREE.BufferGeometry(), paperPos = new Float32Array((PNX + 1) * (PNZ + 1) * 3);
+{ const uv = new Float32Array((PNX + 1) * (PNZ + 1) * 2), idx = [];
+  for (let iz = 0; iz <= PNZ; iz++) for (let ix = 0; ix <= PNX; ix++){ const k = iz * (PNX + 1) + ix; uv[k * 2] = ix / PNX; uv[k * 2 + 1] = 1 - iz / PNZ; }
+  for (let iz = 0; iz < PNZ; iz++) for (let ix = 0; ix < PNX; ix++){ const a = iz * (PNX + 1) + ix, b = a + 1, c = a + PNX + 1, d = c + 1; idx.push(a, c, b, b, c, d); }
+  paperGeo.setAttribute('position', new THREE.BufferAttribute(paperPos, 3)); paperGeo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); paperGeo.setIndex(idx); }
+let paperR = -1;
+function bendPaper(R){
+  if (Math.abs(R - paperR) < 0.0005) return; paperR = R;
+  const Rw = R + 0.0015;
+  for (let iz = 0; iz <= PNZ; iz++) for (let ix = 0; ix <= PNX; ix++){
+    const x = (ix / PNX - 0.5) * PW, z = (iz / PNZ - 0.5) * PL, a = x / Rw, ez = Math.abs(z) / (PL / 2), k = (iz * (PNX + 1) + ix) * 3;
+    paperPos[k] = Rw * Math.sin(a); paperPos[k + 1] = Rw * Math.cos(a) - R + 0.003 * ez * ez * ez; paperPos[k + 2] = z;
+  }
+  paperGeo.attributes.position.needsUpdate = true; paperGeo.computeVertexNormals();
+}
 const paper = new THREE.Mesh(paperGeo, new THREE.MeshStandardMaterial({ map: paperTex, side: THREE.DoubleSide, roughness: 0.92 }));
-paper.visible = false; scene.add(paper);
+paper.frustumCulled = false; paper.visible = false; scene.add(paper);
 const basisQ = (x, y, z) => new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
 function updateStim(dt){
   FX.t += dt; const k = STIM;
@@ -1024,21 +1057,17 @@ function updateStim(dt){
     ice.quaternion.copy(basisQ(x, y, z)); ice.position.copy(surf.p).addScaledVector(surf.n, 0.011 + hov); updateMist(dt);
   }
   if (paper.visible){
-    const sd = k.sd || 1, y = surf.n.clone().multiplyScalar(0.75).addScaledVector(surf.t, -0.65 * sd).normalize();
-    const x = V().crossVectors(surf.n, surf.t).normalize(), z = V().crossVectors(x, y).normalize(); x.crossVectors(y, z);
-    paper.quaternion.copy(basisQ(x, y, z)); paper.position.copy(surf.p).addScaledVector(y, PHH / 2).addScaledVector(surf.n, 0.001 + hov);
+    // 종이 면의 법선 = 피부 법선, 종이 세로 = 팔 길이 방향 → 면 전체가 피부에 닿은 채 미끄러짐
+    bendPaper(clamp(surf.rad, 0.015, 0.06));
+    const y = surf.n.clone(), z = surf.t.clone(), x = V().crossVectors(y, z).normalize(); z.crossVectors(x, y).normalize();
+    paper.quaternion.copy(basisQ(x, y, z)); paper.position.copy(surf.p).addScaledVector(surf.n, hov);
   }
   const coldT = k.o === 'cold' && k.c ? 1 : 0;
   FX.cold += (coldT - FX.cold) * clamp(dt / (coldT > FX.cold ? 1.2 : 4));
   if (surf && k.o === 'cold') coldU.p.value.copy(surf.p);
   coldU.k.value = FX.cold;
   FX.goose += (clamp(FX.cold * 1.2 + Math.max(0, FX.wind - 0.45) * 1.5) - FX.goose) * clamp(dt / 1.5);
-  hairMesh.visible = viewMode === 'skin';
-  if (hairMesh.visible){
-    const windL = wdir.clone().transformDirection(armInv);
-    const pap = k.o === 'paper' && k.c && surf ? { p: surf.pl, dir: surf.tl.clone().multiplyScalar(k.sd || 1) } : null;
-    updateHairs(windL, pap);
-  }
+  coldU.w.value = FX.wind; coldU.wd.value.copy(wdir); coldU.t.value = FX.t; coldU.g.value = FX.goose;
 }
 
 /* ====================== 카메라 시점 ====================== */
